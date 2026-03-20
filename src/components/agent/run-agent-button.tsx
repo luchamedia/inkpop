@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Loader2, Sparkles } from "lucide-react"
@@ -14,31 +14,6 @@ export function RunAgentButton({ siteId }: RunAgentButtonProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [running, setRunning] = useState(false)
-  const [jobId, setJobId] = useState<string | null>(null)
-
-  const pollStatus = useCallback(async () => {
-    if (!jobId) return
-
-    try {
-      const res = await fetch(`/api/agent/status/${jobId}?siteId=${siteId}`)
-      const data = await res.json()
-
-      if (data.status === "complete" || data.status === "completed") {
-        setRunning(false)
-        setJobId(null)
-        toast({ title: "Content generated", description: "New draft posts are ready for review." })
-        router.refresh()
-      }
-    } catch {
-      // Keep polling
-    }
-  }, [jobId, siteId, toast, router])
-
-  useEffect(() => {
-    if (!jobId) return
-    const interval = setInterval(pollStatus, 5000)
-    return () => clearInterval(interval)
-  }, [jobId, pollStatus])
 
   async function handleRun() {
     setRunning(true)
@@ -50,22 +25,26 @@ export function RunAgentButton({ siteId }: RunAgentButtonProps) {
       })
       const data = await res.json()
 
-      if (data.jobId) {
-        setJobId(data.jobId)
+      if (res.ok && data.success) {
+        toast({
+          title: "Content generated",
+          description: `${data.postsCreated} new draft post(s) ready for review.`,
+        })
+        router.refresh()
       } else {
         toast({
           title: "Error",
-          description: data.error || "Failed to start agent",
+          description: data.error || "Failed to generate content",
           variant: "destructive",
         })
-        setRunning(false)
       }
     } catch {
       toast({
         title: "Error",
-        description: "Failed to start agent",
+        description: "Failed to generate content",
         variant: "destructive",
       })
+    } finally {
       setRunning(false)
     }
   }

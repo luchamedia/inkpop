@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import { getAuthUser } from "@/lib/auth"
 import { createServiceClient } from "@/lib/supabase/server"
-import { triggerAgentRun } from "@/lib/mindstudio"
+import { generatePosts } from "@/lib/mindstudio"
+
+export const maxDuration = 120
 
 export async function POST(req: Request) {
   try {
@@ -28,19 +30,29 @@ export async function POST(req: Request) {
       )
     }
 
-    const { jobId } = await triggerAgentRun(
-      siteId,
+    const posts = await generatePosts(
       site.sources.map((s: { type: string; url: string }) => ({
         type: s.type,
         url: s.url,
       }))
     )
 
-    return NextResponse.json({ jobId })
+    for (const post of posts) {
+      await supabase.from("posts").insert({
+        site_id: siteId,
+        title: post.title,
+        slug: post.slug,
+        body: post.body,
+        meta_description: post.meta_description || null,
+        status: "draft",
+      })
+    }
+
+    return NextResponse.json({ success: true, postsCreated: posts.length })
   } catch (error) {
     console.error("Agent run error:", error)
     return NextResponse.json(
-      { error: "Failed to trigger agent" },
+      { error: "Failed to generate content" },
       { status: 500 }
     )
   }
