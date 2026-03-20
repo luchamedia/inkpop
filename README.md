@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# inkpop
+
+Auto-generate SEO blog posts for any website. Sign up, add your data sources, and get a hosted blog at `yoursite.inkpop.net`.
+
+**Live:** [inkpop.net](https://inkpop.net)
+
+## How It Works
+
+1. **Sign up** via Clerk authentication
+2. **Create a site** — pick a subdomain (e.g., `acme.inkpop.net`)
+3. **Add data sources** — URLs to websites you want blog content about
+4. **Subscribe** — $49/mo via Stripe
+5. **Generate content** — MindStudio AI scrapes your sources and writes SEO-optimized blog posts
+6. **Review & publish** — edit drafts in the dashboard, publish when ready
+7. **Automatic daily runs** — cron generates new content daily for active subscribers
+
+## Tech Stack
+
+- **Next.js 14** (App Router) — framework
+- **Clerk** — authentication
+- **Supabase** — Postgres database
+- **Stripe** — billing ($49/mo subscription)
+- **MindStudio SDK** — AI content generation (web scraping + text generation)
+- **shadcn/ui + Tailwind CSS** — UI components
+- **Vercel** — hosting + cron jobs
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+
+- pnpm
+- Accounts: [Clerk](https://clerk.com), [Supabase](https://supabase.com), [Stripe](https://stripe.com), [MindStudio](https://mindstudio.ai)
+
+### Setup
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/luchamedia/inkpop.git
+   cd inkpop
+   pnpm install
+   ```
+
+2. Copy `.env.example` to `.env.local` and fill in your keys:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. Create the database tables in Supabase SQL Editor (see `.claude/plans/SETUP.md` for the full schema).
+
+4. Start the dev server:
+   ```bash
+   pnpm dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000)
+
+### Full Setup Guide
+
+See [`.claude/plans/SETUP.md`](.claude/plans/SETUP.md) for a detailed checklist covering all service configuration (Clerk, Supabase, Stripe, MindStudio, Vercel).
+
+## Architecture
+
+```
+User → Clerk Auth → Dashboard
+                      ├── Create Site (subdomain)
+                      ├── Add Sources (URLs)
+                      ├── Subscribe (Stripe $49/mo)
+                      └── Run Agent
+                            ├── scrapeUrl() — fetches source content
+                            ├── generateText() — AI writes blog posts
+                            └── Insert drafts → Supabase
+
+Subdomain Blog → middleware rewrites → /blog/[subdomain]/...
+Cron (daily) → generates posts for all active subscribers
+Stripe Webhook → manages subscription status
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── agent/run/         # POST — generate blog posts
+│   │   ├── checkout/          # POST — create Stripe session
+│   │   ├── cron/daily-run/    # GET — daily content generation
+│   │   ├── posts/             # CRUD for blog posts
+│   │   ├── sites/             # CRUD for sites + sources
+│   │   └── webhooks/stripe/   # Stripe webhook handler
+│   ├── blog/[subdomain]/      # Public blog pages
+│   ├── dashboard/             # Auth-protected dashboard
+│   └── sign-in, sign-up/     # Clerk auth pages
+├── components/
+│   ├── agent/                 # RunAgentButton
+│   ├── dashboard/             # Sidebar, layout components
+│   └── ui/                    # shadcn/ui components
+├── lib/
+│   ├── auth.ts                # getAuthUser() — Clerk + Supabase
+│   ├── mindstudio.ts          # generatePosts() — scrape + AI generate
+│   ├── stripe.ts              # Stripe client
+│   └── supabase/              # Supabase clients (server + browser)
+└── middleware.ts               # Subdomain detection + Clerk auth
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start dev server (localhost:3000) |
+| `pnpm build` | Production build |
+| `pnpm lint` | Run ESLint |
+| `pnpm start` | Start production server |
