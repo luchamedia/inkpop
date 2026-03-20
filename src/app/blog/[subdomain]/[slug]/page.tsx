@@ -1,0 +1,78 @@
+import { createServiceClient } from "@/lib/supabase/server"
+import { notFound } from "next/navigation"
+import sanitizeHtml from "sanitize-html"
+import type { Metadata } from "next"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { subdomain: string; slug: string }
+}): Promise<Metadata> {
+  const supabase = createServiceClient()
+
+  const { data: site } = await supabase
+    .from("sites")
+    .select("id, name")
+    .eq("subdomain", params.subdomain)
+    .single()
+
+  if (!site) return {}
+
+  const { data: post } = await supabase
+    .from("posts")
+    .select("title, meta_description")
+    .eq("site_id", site.id)
+    .eq("slug", params.slug)
+    .eq("status", "published")
+    .single()
+
+  if (!post) return {}
+
+  return {
+    title: `${post.title} | ${site.name}`,
+    description: post.meta_description || undefined,
+  }
+}
+
+export default async function BlogPostPage({
+  params,
+}: {
+  params: { subdomain: string; slug: string }
+}) {
+  const supabase = createServiceClient()
+
+  const { data: site } = await supabase
+    .from("sites")
+    .select("id")
+    .eq("subdomain", params.subdomain)
+    .single()
+
+  if (!site) notFound()
+
+  const { data: post } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("site_id", site.id)
+    .eq("slug", params.slug)
+    .eq("status", "published")
+    .single()
+
+  if (!post) notFound()
+
+  return (
+    <article>
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold">{post.title}</h1>
+        {post.published_at && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {new Date(post.published_at).toLocaleDateString()}
+          </p>
+        )}
+      </header>
+      <div
+        className="prose prose-slate max-w-none"
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.body) }}
+      />
+    </article>
+  )
+}
