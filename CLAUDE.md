@@ -82,7 +82,47 @@ The flow is synchronous: the API route calls `generatePosts()`, persists results
 
 ## Database
 
-4 tables: `users`, `sites`, `sources`, `posts`. Schema in `.claude/plans/SETUP.md`. Tables created manually in Supabase SQL editor.
+4 tables, created manually in Supabase SQL Editor. No RLS — ownership enforced in application code.
+
+```sql
+CREATE TABLE users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_id text UNIQUE NOT NULL,
+  email text NOT NULL,
+  stripe_customer_id text,
+  subscription_status text DEFAULT 'inactive',
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE sites (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  subdomain text UNIQUE NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE sources (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  site_id uuid REFERENCES sites(id) ON DELETE CASCADE,
+  type text NOT NULL,
+  url text NOT NULL,
+  label text,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  site_id uuid REFERENCES sites(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  slug text NOT NULL,
+  body text NOT NULL,
+  meta_description text,
+  status text DEFAULT 'draft',
+  generated_at timestamptz DEFAULT now(),
+  published_at timestamptz
+);
+```
 
 ## Environment Variables
 

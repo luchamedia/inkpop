@@ -46,7 +46,7 @@ Auto-generate SEO blog posts for any website. Sign up, add your data sources, an
    cp .env.example .env.local
    ```
 
-3. Create the database tables in Supabase SQL Editor (see `.claude/plans/SETUP.md` for the full schema).
+3. Create the database tables in Supabase SQL Editor (see the Database section in `CLAUDE.md` for the full schema).
 
 4. Start the dev server:
    ```bash
@@ -57,7 +57,7 @@ Auto-generate SEO blog posts for any website. Sign up, add your data sources, an
 
 ### Full Setup Guide
 
-See [`.claude/plans/SETUP.md`](.claude/plans/SETUP.md) for a detailed checklist covering all service configuration (Clerk, Supabase, Stripe, MindStudio, Vercel).
+See [`CLAUDE.md`](CLAUDE.md) for the database schema and architecture details, and [`.claude/plans/TODO.md`](.claude/plans/TODO.md) for the project checklist.
 
 ## Architecture
 
