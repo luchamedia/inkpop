@@ -34,4 +34,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-.claude/
+# claude code (keep plans/ and rules/ tracked)
+.claude/*
+!.claude/plans/
+!.claude/rules/
