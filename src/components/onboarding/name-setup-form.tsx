@@ -23,7 +23,7 @@ export function NameSetupForm() {
     })
 
     if (res.ok) {
-      router.push("/new-site")
+      router.push("/dashboard/new-site")
     }
     setSaving(false)
   }

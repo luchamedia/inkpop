@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { UserButton } from "@clerk/nextjs"
+import { usePathname, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   ChevronRight,
@@ -11,13 +10,12 @@ import {
   Plus,
   PanelLeft,
   FileText,
-  Link2,
+  BookOpen,
   LayoutDashboard,
   Settings,
 } from "lucide-react"
 import { useState } from "react"
 import { useSidebar } from "./sidebar-context"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 interface Site {
   id: string
@@ -28,18 +26,21 @@ interface Site {
 interface SidebarProps {
   creditBalance: number
   sites: Site[]
-  userName: string
 }
 
 function SiteTreeItem({ site }: { site: Site }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const isActiveSite = pathname?.includes(`/sites/${site.id}`)
   const [expanded, setExpanded] = useState(isActiveSite ?? false)
+  const currentTab = searchParams?.get("tab") || "overview"
 
+  const siteBase = `/dashboard/sites/${site.id}`
   const subItems = [
-    { label: "Overview", href: `/dashboard/sites/${site.id}`, icon: LayoutDashboard },
-    { label: "Posts", href: `/dashboard/sites/${site.id}/posts`, icon: FileText },
-    { label: "Sources", href: `/dashboard/sites/${site.id}/sources`, icon: Link2 },
+    { label: "Overview", href: siteBase, tab: "overview", icon: LayoutDashboard },
+    { label: "Posts", href: `${siteBase}?tab=posts`, tab: "posts", icon: FileText },
+    { label: "Context", href: `${siteBase}?tab=context`, tab: "context", icon: BookOpen },
+    { label: "Settings", href: `${siteBase}?tab=settings`, tab: "settings", icon: Settings },
   ]
 
   return (
@@ -64,7 +65,7 @@ function SiteTreeItem({ site }: { site: Site }) {
       {expanded && (
         <div className="ml-[18px] border-l border-border pl-2 space-y-0.5 py-0.5">
           {subItems.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = isActiveSite && currentTab === item.tab
             return (
               <Link
                 key={item.href}
@@ -87,7 +88,8 @@ function SiteTreeItem({ site }: { site: Site }) {
   )
 }
 
-export function Sidebar({ creditBalance, sites, userName }: SidebarProps) {
+
+export function Sidebar({ creditBalance, sites }: SidebarProps) {
   const pathname = usePathname()
   const { collapsed, toggle } = useSidebar()
   const hasSites = sites.length > 0
@@ -100,30 +102,18 @@ export function Sidebar({ creditBalance, sites, userName }: SidebarProps) {
       )}
     >
       <div className="flex flex-col min-w-[240px] h-full p-3">
-        {/* User header */}
-        <div className="flex items-center justify-between px-2 py-1.5 mb-2 group">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <UserButton afterSignOutUrl="/" />
-            <span className="text-sm font-medium truncate">
-              {userName || "inkpop"}
-            </span>
-          </div>
-          <div className="flex items-center gap-0.5">
-            <Link
-              href="/dashboard/billing"
-              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Settings"
-            >
-              <Settings className="h-3.5 w-3.5" />
-            </Link>
-            <button
-              onClick={toggle}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-              aria-label="Collapse sidebar"
-            >
-              <PanelLeft className="h-3.5 w-3.5" />
-            </button>
-          </div>
+        {/* Logo header */}
+        <div className="flex items-center justify-between px-2 py-1.5 mb-4">
+          <Link href="/dashboard" className="text-base font-semibold tracking-tight">
+            inkpop
+          </Link>
+          <button
+            onClick={toggle}
+            className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Collapse sidebar"
+          >
+            <PanelLeft className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         {/* Primary nav */}
@@ -149,7 +139,7 @@ export function Sidebar({ creditBalance, sites, userName }: SidebarProps) {
               Sites
             </span>
             <Link
-              href="/new-site"
+              href="/dashboard/new-site"
               className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Create new site"
             >
@@ -170,11 +160,23 @@ export function Sidebar({ creditBalance, sites, userName }: SidebarProps) {
               </p>
             </div>
           )}
+
         </div>
 
-        {/* Bottom section */}
-        <div className="space-y-1 border-t border-border pt-3 mt-2">
-          {/* Credit balance */}
+        {/* Bottom section: settings + credits */}
+        <div className="border-t border-border pt-3 mt-2 space-y-2">
+          <Link
+            href="/dashboard/settings"
+            className={cn(
+              "flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors hover:bg-accent",
+              pathname?.startsWith("/dashboard/settings")
+                ? "bg-accent text-foreground font-medium"
+                : "text-muted-foreground"
+            )}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </Link>
           <div className="flex items-center justify-between px-2 py-1.5 rounded bg-accent/50">
             <div className="flex items-center gap-2 text-sm">
               <Coins className="h-3.5 w-3.5 text-muted-foreground" />
@@ -187,11 +189,6 @@ export function Sidebar({ creditBalance, sites, userName }: SidebarProps) {
             >
               Buy
             </Link>
-          </div>
-
-          {/* Theme toggle */}
-          <div className="flex items-center justify-end px-2 py-1">
-            <ThemeToggle />
           </div>
         </div>
       </div>

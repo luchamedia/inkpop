@@ -213,7 +213,7 @@ export function StepFinalize({
             <p className="text-sm text-muted-foreground">Checking...</p>
           )}
           {!checking && available === true && (
-            <p className="text-sm text-green-600">Available</p>
+            <p className="text-sm text-success">Available</p>
           )}
           {!checking && available === false && (
             <p className="text-sm text-destructive">Already taken</p>

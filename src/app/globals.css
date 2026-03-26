@@ -40,6 +40,10 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Success */
+    --success: 148 48% 42%;
+    --success-foreground: 0 0% 100%;
+
     /* Border: subtle warm gray */
     --border: 40 8% 87%;
     --input: 40 8% 87%;
@@ -76,6 +80,10 @@
 
     --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 148 48% 55%;
+    --success-foreground: 0 0% 100%;
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;

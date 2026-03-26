@@ -78,7 +78,7 @@ export function SiteTodoList({
   return (
     <div className="space-y-0 divide-y divide-border">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Get started</h3>
+        <h3 className="font-serif text-lg font-semibold">Get started</h3>
         <span className="text-sm text-muted-foreground">
           {completedCount}/{todos.length} completed
         </span>
@@ -91,7 +91,7 @@ export function SiteTodoList({
           }`}
         >
           <div
-            className={`mt-0.5 ${todo.completed ? "text-green-600" : "text-muted-foreground"}`}
+            className={`mt-0.5 ${todo.completed ? "text-success" : "text-muted-foreground"}`}
           >
             {todo.completed ? (
               <Check className="h-5 w-5" />

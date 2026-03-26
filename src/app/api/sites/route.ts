@@ -48,8 +48,6 @@ export async function POST(req: Request) {
         category: body.category || null,
         posting_schedule: body.posting_schedule || "weekly",
         posts_per_period: body.posts_per_period || 1,
-        writing_prompt: body.writing_prompt || null,
-        writing_prompt_inputs: body.writing_prompt_inputs || null,
       })
       .select()
       .single()

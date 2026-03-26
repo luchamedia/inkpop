@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { auth } from "@clerk/nextjs/server"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
 
@@ -52,7 +53,8 @@ const creditPacks = [
   },
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { userId } = await auth()
   return (
     <div className="flex min-h-screen flex-col">
       {/* Nav */}
@@ -62,12 +64,20 @@ export default function HomePage() {
             inkpop
           </Link>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/sign-up">Get started free</Link>
-            </Button>
+            {userId ? (
+              <Button asChild size="sm">
+                <Link href="/dashboard/sites">My Sites</Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/sign-in">Sign in</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/sign-up">Get started free</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -112,7 +122,7 @@ export default function HomePage() {
                   {i + 1}
                 </span>
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">
+                  <h3 className="font-serif text-lg font-semibold mb-2">
                     {feature.title}
                   </h3>
                   <p className="text-muted-foreground leading-relaxed">

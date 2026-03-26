@@ -1,80 +1,115 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { StepTopic } from "./step-topic"
-import { StepSources } from "./step-sources"
-import { StepStyle } from "./step-style"
-import { StepFinalize } from "./step-finalize"
-import type { WritingPromptInputs } from "@/lib/writing-prompt"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Loader2, ArrowRight, Sparkles } from "lucide-react"
 
-interface WizardData {
-  // Step 1: Topic
-  topic: string
-  topicContext: Array<{ question: string; answer: string }>
-  description: string
-  companyUrl?: string
-
-  // Step 2: Sources
-  sources: Array<{ type: string; url: string; label?: string }>
-
-  // Step 3: Writing Style
-  writingPromptInputs: WritingPromptInputs
-  writingPrompt: string
-
-  // Step 4: Finalize (name + schedule)
-  name: string
-  subdomain: string
-  postingSchedule: "daily" | "weekly" | "biweekly"
-  postsPerPeriod: number
-}
-
-const steps = [
-  { number: 1, label: "Define your topic" },
-  { number: 2, label: "Add sources" },
-  { number: 3, label: "Writing style" },
-  { number: 4, label: "Finalize" },
+const RESERVED_SUBDOMAINS = [
+  "www", "app", "api", "mail", "admin", "blog", "help", "support",
 ]
+
+type Step = "topic" | "name"
 
 export function NewSiteWizard() {
   const router = useRouter()
   const { toast } = useToast()
-  const [step, setStep] = useState(1)
-  const [submitting, setSubmitting] = useState(false)
-  const [data, setData] = useState<WizardData>({
-    topic: "",
-    topicContext: [],
-    description: "",
-    sources: [],
-    writingPromptInputs: {},
-    writingPrompt: "",
-    postingSchedule: "weekly",
-    postsPerPeriod: 1,
-    name: "",
-    subdomain: "",
-  })
 
-  async function handleComplete() {
+  // Step state
+  const [step, setStep] = useState<Step>("topic")
+
+  // Topic state
+  const [topic, setTopic] = useState("")
+
+  // Name state
+  const [name, setName] = useState("")
+  const [subdomain, setSubdomain] = useState("")
+  const [available, setAvailable] = useState<boolean | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  // AI suggestions
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+
+  const subdomainTooShort = subdomain.length > 0 && subdomain.length < 3
+  const subdomainReserved = RESERVED_SUBDOMAINS.includes(subdomain)
+
+  // Fetch AI name suggestions when entering step 2
+  useEffect(() => {
+    if (step !== "name" || !topic.trim()) return
+    setLoadingSuggestions(true)
+    fetch("/api/ai/suggest-names", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic: topic.trim() }),
+    })
+      .then((res) => res.json())
+      .then((data) => setSuggestions(data.names || []))
+      .catch(() => setSuggestions([]))
+      .finally(() => setLoadingSuggestions(false))
+  }, [step, topic])
+
+  // Debounced subdomain availability check
+  useEffect(() => {
+    if (!subdomain || subdomain.length < 3 || RESERVED_SUBDOMAINS.includes(subdomain)) {
+      setAvailable(null)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setChecking(true)
+      try {
+        const res = await fetch("/api/sites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checkSubdomain: true, subdomain }),
+        })
+        const data = await res.json()
+        setAvailable(data.available)
+      } catch {
+        setAvailable(null)
+      }
+      setChecking(false)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [subdomain])
+
+  function handleNameChange(value: string) {
+    setName(value)
+    const slug = value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+    setSubdomain(slug)
+  }
+
+  const canSubmit =
+    name.trim() &&
+    subdomain &&
+    subdomain.length >= 3 &&
+    !subdomainReserved &&
+    available === true &&
+    !checking &&
+    !submitting
+
+  async function handleSubmit() {
     setSubmitting(true)
 
     try {
-      // 1. Create the site
       const res = await fetch("/api/sites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: data.name,
-          subdomain: data.subdomain,
-          topic: data.topic,
-          topic_context: data.topicContext,
-          description: data.description,
-          posting_schedule: data.postingSchedule,
-          posts_per_period: data.postsPerPeriod,
-          writing_prompt: data.writingPrompt || null,
-          writing_prompt_inputs: Object.keys(data.writingPromptInputs).length > 0
-            ? data.writingPromptInputs
-            : null,
+          name: name.trim(),
+          subdomain,
+          topic: topic.trim() || null,
         }),
       })
       const site = await res.json()
@@ -89,18 +124,7 @@ export function NewSiteWizard() {
         return
       }
 
-      // 2. Add sources in parallel
-      await Promise.all(
-        data.sources.map((source) =>
-          fetch(`/api/sites/${site.id}/sources`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(source),
-          })
-        )
-      )
-
-      // 3. Redirect to site dashboard
+      router.refresh()
       router.push(`/dashboard/sites/${site.id}`)
     } catch {
       toast({
@@ -112,91 +136,166 @@ export function NewSiteWizard() {
     }
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Progress indicator */}
-      <div className="mb-10">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium">{steps[step - 1].label}</p>
-          <p className="text-xs text-muted-foreground">
-            Step {step} of {steps.length}
+  // --- Step 1: Topic ---
+  if (step === "topic") {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold">
+            What is your blog about?
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Describe your topic and we&apos;ll suggest a name for your site.
           </p>
         </div>
-        <div className="h-0.5 bg-border rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${(step / steps.length) * 100}%` }}
+
+        <div className="space-y-2">
+          <Label htmlFor="topic">Topic</Label>
+          <Textarea
+            id="topic"
+            placeholder="e.g., Sustainable living tips for urban millennials, AI tools for small business owners..."
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            maxLength={500}
+            rows={3}
+            autoFocus
           />
+          <p className="text-xs text-muted-foreground text-right">
+            {topic.length}/500
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setStep("name")
+            }}
+          >
+            Skip
+          </Button>
+          <Button
+            onClick={() => setStep("name")}
+            disabled={!topic.trim()}
+          >
+            Continue
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // --- Step 2: Name + Subdomain ---
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-serif text-2xl font-semibold">Name your blog</h2>
+        <p className="text-sm text-muted-foreground">
+          {topic.trim()
+            ? "Pick a suggested name or enter your own."
+            : "You can configure everything else from your dashboard."}
+        </p>
+      </div>
+
+      {/* AI Suggestions (only shown if topic was provided) */}
+      {topic.trim() && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm font-medium">AI-suggested names</p>
+          </div>
+          {loadingSuggestions ? (
+            <div className="flex gap-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-8 w-24 rounded-full" />
+              ))}
+            </div>
+          ) : suggestions.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => handleNameChange(s)}
+                  className="rounded-full border px-4 py-1.5 text-sm transition-colors hover:bg-accent"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No suggestions available. Enter a name below.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Site name</Label>
+          <Input
+            id="name"
+            placeholder="My Awesome Blog"
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            autoFocus={!topic.trim()}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="subdomain">Subdomain</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="subdomain"
+              placeholder="my-blog"
+              value={subdomain}
+              onChange={(e) =>
+                setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
+              }
+            />
+            <span className="whitespace-nowrap text-sm text-muted-foreground">
+              .inkpop.net
+            </span>
+          </div>
+          {checking && (
+            <p className="text-sm text-muted-foreground">Checking...</p>
+          )}
+          {!checking && available === true && (
+            <p className="text-sm text-success">Available</p>
+          )}
+          {!checking && available === false && (
+            <p className="text-sm text-destructive">Already taken</p>
+          )}
+          {subdomainTooShort && (
+            <p className="text-sm text-destructive">Must be at least 3 characters</p>
+          )}
+          {subdomainReserved && (
+            <p className="text-sm text-destructive">This subdomain is reserved</p>
+          )}
         </div>
       </div>
 
-      {/* Step content */}
-      {step === 1 && (
-        <StepTopic
-          data={{
-            topic: data.topic,
-            topicContext: data.topicContext,
-            description: data.description,
-            companyUrl: data.companyUrl,
-          }}
-          onNext={(topicData) => {
-            setData((prev) => ({ ...prev, ...topicData }))
-            setStep(2)
-          }}
-        />
-      )}
-
-      {step === 2 && (
-        <StepSources
-          topic={data.topic}
-          sources={data.sources}
-          onUpdate={(sources) => setData((prev) => ({ ...prev, sources }))}
-          onNext={() => setStep(3)}
-          onBack={() => setStep(1)}
-        />
-      )}
-
-      {step === 3 && (
-        <StepStyle
-          inputs={data.writingPromptInputs}
-          writingPrompt={data.writingPrompt}
-          description={data.description}
-          topic={data.topic}
-          onNext={(inputs, prompt) => {
-            setData((prev) => ({
-              ...prev,
-              writingPromptInputs: inputs,
-              writingPrompt: prompt,
-            }))
-            setStep(4)
-          }}
-          onBack={() => setStep(2)}
-        />
-      )}
-
-      {step === 4 && (
-        <StepFinalize
-          topic={data.topic}
-          topicContext={data.topicContext}
-          name={data.name}
-          subdomain={data.subdomain}
-          schedule={data.postingSchedule}
-          postsPerPeriod={data.postsPerPeriod}
-          onUpdate={(name, subdomain) =>
-            setData((prev) => ({ ...prev, name, subdomain }))
-          }
-          onScheduleUpdate={(schedule, postsPerPeriod) =>
-            setData((prev) => ({
-              ...prev,
-              postingSchedule: schedule,
-              postsPerPeriod,
-            }))
-          }
-          onSubmit={handleComplete}
-          onBack={() => setStep(3)}
-          submitting={submitting}
-        />
-      )}
+      <div className="flex gap-3">
+        <Button
+          variant="outline"
+          onClick={() => setStep("topic")}
+          disabled={submitting}
+        >
+          Back
+        </Button>
+        <Button onClick={handleSubmit} disabled={!canSubmit}>
+          {submitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating site...
+            </>
+          ) : (
+            "Create Site"
+          )}
+        </Button>
+      </div>
     </div>
   )
 }

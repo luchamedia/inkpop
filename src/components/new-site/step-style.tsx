@@ -142,7 +142,7 @@ export function StepStyle({ inputs: initialInputs, writingPrompt: initialPrompt,
 
         {/* Section A: Company Info */}
         <section className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">About your company</h3>
+          <h3 className="font-serif text-sm font-medium text-muted-foreground uppercase tracking-wide">About your company</h3>
 
           <div className="space-y-2">
             <Label htmlFor="companyName">Company name *</Label>
@@ -200,7 +200,7 @@ export function StepStyle({ inputs: initialInputs, writingPrompt: initialPrompt,
 
         {/* Section B: Audience */}
         <section className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Target audience</h3>
+          <h3 className="font-serif text-sm font-medium text-muted-foreground uppercase tracking-wide">Target audience</h3>
 
           <div className="space-y-2">
             <Label htmlFor="audienceRole">Who reads your blog?</Label>
@@ -247,7 +247,7 @@ export function StepStyle({ inputs: initialInputs, writingPrompt: initialPrompt,
 
         {/* Section C: Voice & Tone */}
         <section className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Voice & tone</h3>
+          <h3 className="font-serif text-sm font-medium text-muted-foreground uppercase tracking-wide">Voice & tone</h3>
 
           <div className="space-y-2">
             <Label>Pick 1-5 words that describe your brand voice *</Label>
@@ -437,7 +437,7 @@ export function StepStyle({ inputs: initialInputs, writingPrompt: initialPrompt,
           <button
             type="button"
             onClick={() => setShowLanguage(!showLanguage)}
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+            className="flex items-center gap-2 font-serif text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
           >
             Language rules
             {showLanguage ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -492,7 +492,7 @@ export function StepStyle({ inputs: initialInputs, writingPrompt: initialPrompt,
           <button
             type="button"
             onClick={() => setShowExamples(!showExamples)}
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+            className="flex items-center gap-2 font-serif text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
           >
             Examples & references
             {showExamples ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
