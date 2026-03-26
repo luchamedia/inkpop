@@ -1,10 +1,21 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Lora } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+})
+
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-lora",
+  display: "swap",
+  style: ["normal", "italic"],
+})
 
 export const metadata: Metadata = {
   title: "inkpop - AI-Powered SEO Blog Platform",
@@ -18,8 +29,15 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className={inter.className}>
+      <html lang="en" className={`${inter.variable} ${lora.variable}`} suppressHydrationWarning>
+        <head>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`,
+            }}
+          />
+        </head>
+        <body className="font-sans">
           {children}
           <Toaster />
         </body>

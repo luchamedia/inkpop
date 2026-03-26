@@ -18,9 +18,10 @@ export default async function BlogLayout({
   if (!site) notFound()
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <header className="mb-12 border-b pb-4">
-        <h1 className="text-2xl font-bold">{site.name}</h1>
+    <div className="mx-auto max-w-2xl px-6 py-10">
+      <header className="mb-12">
+        <h1 className="font-serif text-2xl font-semibold">{site.name}</h1>
+        <div className="mt-3 h-px bg-border" />
       </header>
       {children}
     </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getAuthUser } from "@/lib/auth"
 import { createServiceClient } from "@/lib/supabase/server"
 import { generatePosts } from "@/lib/mindstudio"
+import { getBalance, deductCredits, autoRenewCredits, type PackId } from "@/lib/credits"
 
 export const maxDuration = 120
 
@@ -11,10 +12,36 @@ export async function POST(req: Request) {
     const supabase = createServiceClient()
     const { siteId } = await req.json()
 
+    // Check credit balance before expensive AI call
+    let balance = await getBalance(user.id)
+    if (balance <= 0) {
+      // Attempt auto-renew if enabled
+      if (user.auto_renew && user.auto_renew_pack && user.stripe_customer_id) {
+        const renewal = await autoRenewCredits(
+          user.id,
+          user.stripe_customer_id,
+          user.auto_renew_pack as PackId
+        )
+        if (renewal.success) {
+          balance = renewal.newBalance!
+        } else {
+          return NextResponse.json(
+            { error: "Insufficient credits", auto_renew_failed: renewal.error, balance: 0 },
+            { status: 402 }
+          )
+        }
+      } else {
+        return NextResponse.json(
+          { error: "Insufficient credits", balance: 0 },
+          { status: 402 }
+        )
+      }
+    }
+
     // Verify ownership
     const { data: site } = await supabase
       .from("sites")
-      .select("id, sources(*)")
+      .select("id, topic, description, topic_context, writing_prompt, sources(*)")
       .eq("id", siteId)
       .eq("user_id", user.id)
       .single()
@@ -34,8 +61,17 @@ export async function POST(req: Request) {
       site.sources.map((s: { type: string; url: string }) => ({
         type: s.type,
         url: s.url,
-      }))
+      })),
+      {
+        topic: site.topic,
+        description: site.description,
+        topicContext: site.topic_context,
+        writingPrompt: site.writing_prompt,
+      }
     )
+
+    // Deduct credits based on actual posts generated
+    const deduction = await deductCredits(user.id, posts.length, siteId)
 
     for (const post of posts) {
       await supabase.from("posts").insert({
@@ -48,7 +84,12 @@ export async function POST(req: Request) {
       })
     }
 
-    return NextResponse.json({ success: true, postsCreated: posts.length })
+    return NextResponse.json({
+      success: true,
+      postsCreated: posts.length,
+      creditsUsed: posts.length,
+      creditsRemaining: deduction.balance,
+    })
   } catch (error) {
     console.error("Agent run error:", error)
     return NextResponse.json(

@@ -10,22 +10,22 @@ export default async function DashboardPage() {
 
   const { data: dbUser } = await supabase
     .from("users")
-    .select("id")
+    .select("id, name")
     .eq("clerk_id", userId)
     .single()
 
   if (!dbUser) redirect("/sign-in")
 
+  // Name gate: new users must set their name first
+  if (!dbUser.name) redirect("/setup")
+
   // Check if user has any sites
-  const { data: sites } = await supabase
+  const { count } = await supabase
     .from("sites")
-    .select("id")
+    .select("*", { count: "exact", head: true })
     .eq("user_id", dbUser.id)
-    .limit(1)
 
-  if (sites && sites.length > 0) {
-    redirect("/dashboard/sites")
-  }
+  if (!count || count === 0) redirect("/new-site")
 
-  redirect("/dashboard/onboarding")
+  redirect("/dashboard/sites")
 }

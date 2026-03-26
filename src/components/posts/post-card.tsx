@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
 interface PostCardProps {
@@ -16,29 +15,26 @@ interface PostCardProps {
 
 export function PostCard({ post, siteId }: PostCardProps) {
   return (
-    <Link href={`/dashboard/sites/${siteId}/posts/${post.id}`}>
-      <Card className="transition-colors hover:bg-muted/50">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">{post.title}</CardTitle>
-            <Badge variant={post.status === "published" ? "default" : "secondary"}>
-              {post.status}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {post.meta_description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {post.meta_description}
-            </p>
-          )}
-          <p className="mt-2 text-xs text-muted-foreground">
-            {post.published_at
-              ? `Published ${new Date(post.published_at).toLocaleDateString()}`
-              : `Created ${new Date(post.created_at).toLocaleDateString()}`}
+    <Link
+      href={`/dashboard/sites/${siteId}/posts/${post.id}`}
+      className="flex items-start justify-between py-3 px-2 rounded transition-colors hover:bg-accent group"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{post.title}</p>
+        {post.meta_description && (
+          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+            {post.meta_description}
           </p>
-        </CardContent>
-      </Card>
+        )}
+        <p className="mt-1 text-xs text-muted-foreground">
+          {post.published_at
+            ? `Published ${new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+            : `Draft \u00b7 ${new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+        </p>
+      </div>
+      <Badge variant={post.status === "published" ? "published" : "draft"} className="ml-3 shrink-0">
+        {post.status}
+      </Badge>
     </Link>
   )
 }

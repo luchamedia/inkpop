@@ -8,7 +8,7 @@ export async function getAuthUser() {
   const supabase = createServiceClient()
   const { data: dbUser } = await supabase
     .from("users")
-    .select("id, clerk_id, email, subscription_status")
+    .select("id, clerk_id, email, name, subscription_status, credit_balance, auto_renew, auto_renew_pack, stripe_customer_id, monthly_credits_granted_at")
     .eq("clerk_id", userId)
     .single()
 

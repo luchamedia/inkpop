@@ -29,23 +29,27 @@ export default async function BlogIndex({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {posts.map((post) => (
         <article key={post.slug}>
           <Link
             href={`/blog/${params.subdomain}/${post.slug}`}
             className="group"
           >
-            <h2 className="text-xl font-semibold group-hover:underline">
+            <h2 className="font-serif text-xl font-semibold transition-colors group-hover:text-ink-yellow-text">
               {post.title}
             </h2>
             {post.meta_description && (
-              <p className="mt-1 text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed line-clamp-2">
                 {post.meta_description}
               </p>
             )}
-            <p className="mt-1 text-sm text-muted-foreground">
-              {new Date(post.published_at).toLocaleDateString()}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {new Date(post.published_at).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
             </p>
           </Link>
         </article>

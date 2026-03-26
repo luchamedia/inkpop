@@ -17,7 +17,7 @@ export default async function PostsPage({
 
   const { data: dbUser } = await supabase
     .from("users")
-    .select("id")
+    .select("id, credit_balance")
     .eq("clerk_id", userId)
     .single()
 
@@ -50,8 +50,8 @@ export default async function PostsPage({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Content Inbox</h1>
-        <RunAgentButton siteId={params.siteId} />
+        <h1 className="font-serif text-3xl font-semibold tracking-tight">Content Inbox</h1>
+        <RunAgentButton siteId={params.siteId} creditBalance={dbUser.credit_balance ?? 0} />
       </div>
 
       <Tabs defaultValue="drafts">

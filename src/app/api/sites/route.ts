@@ -42,6 +42,14 @@ export async function POST(req: Request) {
         user_id: user.id,
         name: body.name,
         subdomain: body.subdomain,
+        topic: body.topic || null,
+        topic_context: body.topic_context || null,
+        description: body.description || null,
+        category: body.category || null,
+        posting_schedule: body.posting_schedule || "weekly",
+        posts_per_period: body.posts_per_period || 1,
+        writing_prompt: body.writing_prompt || null,
+        writing_prompt_inputs: body.writing_prompt_inputs || null,
       })
       .select()
       .single()

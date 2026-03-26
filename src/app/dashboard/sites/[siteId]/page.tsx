@@ -2,9 +2,10 @@ import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { createServiceClient } from "@/lib/supabase/server"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { FileText, Link2, ExternalLink } from "lucide-react"
+import { SiteTodoList } from "@/components/dashboard/site-todo-list"
+import { DeleteSiteButton } from "@/components/dashboard/delete-site-button"
+import { WritingPromptCard } from "@/components/dashboard/writing-prompt-card"
 
 export default async function SiteDetailPage({
   params,
@@ -18,7 +19,7 @@ export default async function SiteDetailPage({
 
   const { data: dbUser } = await supabase
     .from("users")
-    .select("id")
+    .select("id, credit_balance")
     .eq("clerk_id", userId)
     .single()
 
@@ -45,72 +46,64 @@ export default async function SiteDetailPage({
     .eq("site_id", site.id)
     .eq("status", "published")
 
+  const totalPosts = (draftCount || 0) + (publishedCount || 0)
+
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">{site.name}</h1>
-        <p className="text-muted-foreground">
-          {site.subdomain}.inkpop.net
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="font-serif text-3xl font-semibold tracking-tight">{site.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <a
+              href={`https://${site.subdomain}.inkpop.net`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              {site.subdomain}.inkpop.net
+              <ExternalLink className="ml-1 inline h-3 w-3" />
+            </a>
+          </p>
+        </div>
+        <DeleteSiteButton siteId={site.id} siteName={site.name} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Sources
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {site.sources?.length || 0}
-            </div>
-            <Button asChild variant="link" className="mt-2 h-auto p-0">
-              <Link href={`/dashboard/sites/${site.id}/sources`}>
-                <Link2 className="mr-1 h-3 w-3" />
-                Manage sources
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex gap-8 mb-10 pb-8 border-b border-border">
+        <Link href={`/dashboard/sites/${site.id}/sources`} className="group">
+          <p className="text-2xl font-semibold">{site.sources?.length || 0}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5 flex items-center gap-1">
+            <Link2 className="h-3 w-3" />
+            Sources
+          </p>
+        </Link>
+        <Link href={`/dashboard/sites/${site.id}/posts`} className="group">
+          <p className="text-2xl font-semibold">{draftCount || 0}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5 flex items-center gap-1">
+            <FileText className="h-3 w-3" />
+            Drafts
+          </p>
+        </Link>
+        <div>
+          <p className="text-2xl font-semibold">{publishedCount || 0}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Published</p>
+        </div>
+      </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Draft Posts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{draftCount || 0}</div>
-            <Button asChild variant="link" className="mt-2 h-auto p-0">
-              <Link href={`/dashboard/sites/${site.id}/posts`}>
-                <FileText className="mr-1 h-3 w-3" />
-                View posts
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <WritingPromptCard
+        siteId={site.id}
+        writingPrompt={site.writing_prompt}
+        writingPromptInputs={site.writing_prompt_inputs}
+      />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Published
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{publishedCount || 0}</div>
-            <Button asChild variant="link" className="mt-2 h-auto p-0">
-              <a
-                href={`https://${site.subdomain}.inkpop.net`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="mr-1 h-3 w-3" />
-                View blog
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="mt-8">
+        <SiteTodoList
+          siteId={site.id}
+          hasAnyPosts={totalPosts > 0}
+          hasSchedule={!!site.topic}
+          creditBalance={dbUser.credit_balance ?? 0}
+          currentSchedule={site.posting_schedule || "weekly"}
+          currentPostsPerPeriod={site.posts_per_period || 1}
+        />
       </div>
     </div>
   )

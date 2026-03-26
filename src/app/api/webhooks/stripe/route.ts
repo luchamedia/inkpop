@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import { stripe } from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 import { createServiceClient } from "@/lib/supabase/server"
+import { addCredits } from "@/lib/credits"
 import Stripe from "stripe"
 
 export async function POST(req: Request) {
@@ -11,6 +12,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No signature" }, { status: 400 })
   }
 
+  const stripe = getStripe()
   let event: Stripe.Event
   try {
     event = stripe.webhooks.constructEvent(
@@ -29,34 +31,32 @@ export async function POST(req: Request) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session
       const clerkId = session.metadata?.clerk_id
+      const credits = parseInt(session.metadata?.credits || "0", 10)
       const customerId =
         typeof session.customer === "string"
           ? session.customer
           : session.customer?.id
 
-      if (clerkId) {
-        await supabase
+      if (clerkId && credits > 0) {
+        // Ensure stripe_customer_id is stored
+        if (customerId) {
+          await supabase
+            .from("users")
+            .update({ stripe_customer_id: customerId })
+            .eq("clerk_id", clerkId)
+        }
+
+        // Look up internal user ID
+        const { data: dbUser } = await supabase
           .from("users")
-          .update({
-            stripe_customer_id: customerId,
-            subscription_status: "active",
-          })
+          .select("id")
           .eq("clerk_id", clerkId)
+          .single()
+
+        if (dbUser) {
+          await addCredits(dbUser.id, credits, session.id)
+        }
       }
-      break
-    }
-
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription
-      const customerId =
-        typeof subscription.customer === "string"
-          ? subscription.customer
-          : subscription.customer.id
-
-      await supabase
-        .from("users")
-        .update({ subscription_status: "canceled" })
-        .eq("stripe_customer_id", customerId)
       break
     }
   }

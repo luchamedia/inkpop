@@ -1,131 +1,193 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Check, Sparkles, Globe, RefreshCw } from "lucide-react"
+import { Check } from "lucide-react"
 
 const features = [
   {
-    icon: Sparkles,
-    title: "AI-Powered Content",
+    title: "Connect your sources",
     description:
-      "Our AI agent analyzes your sources and creates unique, SEO-optimized blog posts daily.",
+      "Add YouTube channels, blogs, and webpages. Our AI scrapes them to understand your niche and audience.",
   },
   {
-    icon: Globe,
-    title: "Hosted Blog",
+    title: "AI writes your posts",
     description:
-      "Every site gets a dedicated subdomain blog — no setup, no hosting headaches.",
+      "Unique, SEO-optimized blog posts generated from your source material — not generic filler.",
   },
   {
-    icon: RefreshCw,
-    title: "Fully Automated",
+    title: "Publish to your blog",
     description:
-      "Connect your sources once. We scrape, write, and queue drafts for you every day.",
+      "Every site gets a hosted subdomain blog. Review drafts, click publish, and watch your traffic grow.",
   },
 ]
 
 const pricingFeatures = [
-  "Daily AI-generated SEO blog posts",
+  "AI-generated SEO blog posts",
+  "Unlimited sites",
+  "Up to 10 content sources per site",
   "Hosted subdomain blog",
-  "Up to 5 content sources per site",
-  "YouTube, blog, and webpage scraping",
-  "One-click approve & publish",
-  "SEO meta descriptions included",
+  "One-click publish",
+]
+
+const creditPacks = [
+  {
+    name: "Starter",
+    credits: 10,
+    price: "$5",
+    perPost: "$0.50/post",
+    discount: null,
+  },
+  {
+    name: "Standard",
+    credits: 50,
+    price: "$22.50",
+    perPost: "$0.45/post",
+    discount: "Save 10%",
+  },
+  {
+    name: "Bulk",
+    credits: 100,
+    price: "$40",
+    perPost: "$0.40/post",
+    discount: "Save 20%",
+  },
 ]
 
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Nav */}
-      <nav className="flex items-center justify-between border-b px-8 py-4">
-        <span className="text-xl font-bold">inkpop</span>
-        <div className="flex gap-3">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/sign-up">Get started</Link>
-          </Button>
+      <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <Link href="/" className="font-serif text-lg font-semibold tracking-tight">
+            inkpop
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/sign-in">Sign in</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/sign-up">Get started free</Link>
+            </Button>
+          </div>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="flex flex-col items-center gap-8 px-8 py-24 text-center">
-        <h1 className="max-w-3xl text-5xl font-bold tracking-tight sm:text-6xl">
-          5x your organic traffic with AI-generated SEO content
-        </h1>
-        <p className="max-w-xl text-lg text-muted-foreground">
-          Connect your YouTube channels, blogs, and webpages. Our AI agent
-          scrapes your sources daily and generates SEO-optimized blog posts
-          automatically.
+      <section className="mx-auto max-w-4xl px-6 py-24 text-center">
+        <p className="mb-6 text-sm font-medium uppercase tracking-widest text-muted-foreground">
+          AI-powered SEO content
         </p>
-        <div className="flex gap-4">
-          <Button asChild size="lg">
-            <Link href="/sign-up">Start free trial</Link>
+        <h1 className="font-serif text-5xl font-semibold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
+          Write less.
+          <br />
+          Rank more.
+        </h1>
+        <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+          Connect your sources. Get SEO-optimized blog posts generated
+          automatically, published to your own hosted subdomain.
+        </p>
+        <div className="mt-10 flex items-center justify-center gap-4">
+          <Button asChild size="lg" className="px-8">
+            <Link href="/sign-up">Start for free</Link>
           </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="#pricing">See pricing</Link>
+          <Button asChild variant="ghost" size="lg">
+            <Link href="#pricing">View pricing &rarr;</Link>
           </Button>
         </div>
+        <p className="mt-6 text-xs text-muted-foreground">
+          5 free posts every month. No credit card required.
+        </p>
       </section>
 
-      {/* Features */}
-      <section className="border-t bg-muted/40 px-8 py-20">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-12 text-center text-3xl font-bold">
+      {/* How it works */}
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-4xl px-6 py-20">
+          <h2 className="font-serif text-3xl font-semibold mb-12">
             How it works
           </h2>
-          <div className="grid gap-8 md:grid-cols-3">
-            {features.map((feature) => (
-              <Card key={feature.title}>
-                <CardContent className="pt-6">
-                  <feature.icon className="mb-4 h-8 w-8 text-primary" />
-                  <h3 className="mb-2 text-lg font-semibold">
+          <div className="space-y-12">
+            {features.map((feature, i) => (
+              <div key={feature.title} className="flex items-start gap-8">
+                <span className="text-5xl font-serif font-semibold text-border shrink-0 w-12 text-right">
+                  {i + 1}
+                </span>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground leading-relaxed">
                     {feature.description}
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="px-8 py-20">
-        <div className="mx-auto max-w-md text-center">
-          <h2 className="mb-4 text-3xl font-bold">Simple pricing</h2>
-          <p className="mb-8 text-muted-foreground">
-            One plan, everything included. No hidden fees.
-          </p>
+      <section id="pricing" className="border-t border-border">
+        <div className="mx-auto max-w-4xl px-6 py-20">
+          <div className="mb-12">
+            <h2 className="font-serif text-3xl font-semibold">
+              Simple pricing
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              Pay per post. No subscriptions. No lock-in.
+            </p>
+          </div>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="mb-6">
-                <span className="text-4xl font-bold">$49</span>
-                <span className="text-muted-foreground">/month</span>
+          <div className="flex flex-wrap gap-2 mb-10">
+            {pricingFeatures.map((f) => (
+              <span
+                key={f}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-sm"
+              >
+                <Check className="h-3 w-3 text-primary" />
+                {f}
+              </span>
+            ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {creditPacks.map((pack) => (
+              <div
+                key={pack.name}
+                className="border border-border rounded p-6 flex flex-col gap-4"
+              >
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    {pack.name}
+                  </p>
+                  <p className="mt-2 text-3xl font-semibold font-serif">
+                    {pack.price}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {pack.credits} posts &middot; {pack.perPost}
+                  </p>
+                </div>
+                {pack.discount && (
+                  <span className="inline-flex w-fit items-center rounded-sm bg-ink-yellow-bg px-2 py-0.5 text-[11px] font-medium text-ink-yellow-text">
+                    {pack.discount}
+                  </span>
+                )}
+                <Button asChild className="mt-auto">
+                  <Link href="/sign-up">Get started</Link>
+                </Button>
               </div>
-              <ul className="mb-8 space-y-3 text-left">
-                {pricingFeatures.map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-sm">
-                    <Check className="h-4 w-4 text-primary" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Button asChild size="lg" className="w-full">
-                <Link href="/sign-up">Get started</Link>
-              </Button>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t px-8 py-8 text-center text-sm text-muted-foreground">
-        inkpop &copy; {new Date().getFullYear()}
+      <footer className="border-t border-border">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-8">
+          <span className="font-serif text-sm font-medium">inkpop</span>
+          <span className="text-xs text-muted-foreground">
+            &copy; {new Date().getFullYear()}
+          </span>
+        </div>
       </footer>
     </div>
   )

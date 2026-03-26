@@ -61,16 +61,23 @@ export default async function BlogPostPage({
 
   return (
     <article>
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold">{post.title}</h1>
+      <header className="mb-10">
+        <h1 className="font-serif text-3xl font-semibold leading-snug sm:text-4xl">
+          {post.title}
+        </h1>
         {post.published_at && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {new Date(post.published_at).toLocaleDateString()}
+          <p className="mt-3 text-sm text-muted-foreground">
+            {new Date(post.published_at).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
           </p>
         )}
+        <div className="mt-6 h-px bg-border" />
       </header>
       <div
-        className="prose prose-slate max-w-none"
+        className="prose prose-neutral max-w-none prose-headings:font-serif prose-headings:font-semibold"
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.body) }}
       />
     </article>

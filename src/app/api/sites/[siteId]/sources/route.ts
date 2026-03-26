@@ -53,9 +53,9 @@ export async function POST(
       .select("*", { count: "exact", head: true })
       .eq("site_id", params.siteId)
 
-    if ((count || 0) >= 5) {
+    if ((count || 0) >= 10) {
       return NextResponse.json(
-        { error: "Maximum 5 sources per site" },
+        { error: "Maximum 10 sources per site" },
         { status: 400 }
       )
     }
@@ -66,6 +66,7 @@ export async function POST(
         site_id: params.siteId,
         type: body.type,
         url: body.url,
+        label: body.label || null,
       })
       .select()
       .single()

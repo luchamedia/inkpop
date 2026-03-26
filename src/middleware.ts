@@ -3,11 +3,11 @@ import { NextResponse } from "next/server"
 
 const isPublicRoute = createRouteMatcher([
   "/",
-  "/subscribe",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks/stripe",
   "/api/cron/daily-run",
+  "/api/cron/monthly-credits",
   "/blog(.*)",
 ])
 

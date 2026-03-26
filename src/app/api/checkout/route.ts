@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server"
 import { auth, currentUser } from "@clerk/nextjs/server"
-import { stripe } from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 import { createServiceClient } from "@/lib/supabase/server"
+import { CREDIT_PACKS, type PackId } from "@/lib/credits"
 
-export async function POST(_req: Request) {
+export async function POST(req: Request) {
   try {
     const { userId } = auth()
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { pack } = (await req.json()) as { pack: PackId }
+    const packConfig = CREDIT_PACKS[pack]
+    if (!packConfig) {
+      return NextResponse.json({ error: "Invalid pack" }, { status: 400 })
     }
 
     const user = await currentUser()
@@ -20,6 +27,7 @@ export async function POST(_req: Request) {
       .eq("clerk_id", userId)
       .single()
 
+    const stripe = getStripe()
     let customerId = dbUser?.stripe_customer_id
 
     // Create Stripe customer if needed
@@ -38,16 +46,23 @@ export async function POST(_req: Request) {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      mode: "subscription",
+      mode: "payment",
+      payment_intent_data: {
+        setup_future_usage: "off_session",
+      },
       line_items: [
         {
-          price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID!,
+          price: packConfig.priceId,
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscribe`,
-      metadata: { clerk_id: userId },
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?purchased=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/top-up`,
+      metadata: {
+        clerk_id: userId,
+        pack,
+        credits: String(packConfig.credits),
+      },
     })
 
     return NextResponse.json({ url: session.url })
