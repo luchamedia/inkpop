@@ -1,8 +1,9 @@
+import { cache } from "react"
 import { auth } from "@clerk/nextjs/server"
 import { createServiceClient } from "@/lib/supabase/server"
 
-export async function getAuthUser() {
-  const { userId } = auth()
+export const getAuthUser = cache(async () => {
+  const { userId } = await auth()
   if (!userId) throw new Error("Unauthorized")
 
   const supabase = createServiceClient()
@@ -14,4 +15,4 @@ export async function getAuthUser() {
 
   if (!dbUser) throw new Error("User not found")
   return dbUser
-}
+})

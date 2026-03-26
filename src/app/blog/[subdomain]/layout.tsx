@@ -6,13 +6,14 @@ export default async function BlogLayout({
   params,
 }: {
   children: React.ReactNode
-  params: { subdomain: string }
+  params: Promise<{ subdomain: string }>
 }) {
+  const { subdomain } = await params
   const supabase = createServiceClient()
   const { data: site } = await supabase
     .from("sites")
     .select("name")
-    .eq("subdomain", params.subdomain)
+    .eq("subdomain", subdomain)
     .single()
 
   if (!site) notFound()

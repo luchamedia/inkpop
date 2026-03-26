@@ -9,9 +9,10 @@ import { ArrowLeft } from "lucide-react"
 export default async function PostPage({
   params,
 }: {
-  params: { siteId: string; postId: string }
+  params: Promise<{ siteId: string; postId: string }>
 }) {
-  const { userId } = auth()
+  const { siteId, postId } = await params
+  const { userId } = await auth()
   if (!userId) redirect("/sign-in")
 
   const supabase = createServiceClient()
@@ -28,7 +29,7 @@ export default async function PostPage({
   const { data: site } = await supabase
     .from("sites")
     .select("id")
-    .eq("id", params.siteId)
+    .eq("id", siteId)
     .eq("user_id", dbUser.id)
     .single()
 
@@ -37,16 +38,16 @@ export default async function PostPage({
   const { data: post } = await supabase
     .from("posts")
     .select("*")
-    .eq("id", params.postId)
-    .eq("site_id", params.siteId)
+    .eq("id", postId)
+    .eq("site_id", siteId)
     .single()
 
-  if (!post) redirect(`/dashboard/sites/${params.siteId}/posts`)
+  if (!post) redirect(`/dashboard/sites/${siteId}/posts`)
 
   return (
     <div>
       <Button asChild variant="ghost" className="mb-4">
-        <Link href={`/dashboard/sites/${params.siteId}/posts`}>
+        <Link href={`/dashboard/sites/${siteId}/posts`}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to posts
         </Link>

@@ -2,17 +2,20 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 
+export const revalidate = 3600
+
 export default async function BlogIndex({
   params,
 }: {
-  params: { subdomain: string }
+  params: Promise<{ subdomain: string }>
 }) {
+  const { subdomain } = await params
   const supabase = createServiceClient()
 
   const { data: site } = await supabase
     .from("sites")
     .select("id")
-    .eq("subdomain", params.subdomain)
+    .eq("subdomain", subdomain)
     .single()
 
   if (!site) notFound()
@@ -33,7 +36,7 @@ export default async function BlogIndex({
       {posts.map((post) => (
         <article key={post.slug}>
           <Link
-            href={`/blog/${params.subdomain}/${post.slug}`}
+            href={`/blog/${subdomain}/${post.slug}`}
             className="group"
           >
             <h2 className="font-serif text-xl font-semibold transition-colors group-hover:text-ink-yellow-text">

@@ -6,7 +6,7 @@ import { CREDIT_PACKS, type PackId } from "@/lib/credits"
 
 export async function POST(req: Request) {
   try {
-    const { userId } = auth()
+    const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?purchased=true`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?tab=billing&purchased=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/top-up`,
       metadata: {
         clerk_id: userId,

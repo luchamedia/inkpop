@@ -15,18 +15,19 @@ async function verifySiteOwnership(siteId: string, userId: string) {
 
 export async function GET(
   _req: Request,
-  { params }: { params: { siteId: string } }
+  { params }: { params: Promise<{ siteId: string }> }
 ) {
   try {
+    const { siteId } = await params
     const user = await getAuthUser()
-    const site = await verifySiteOwnership(params.siteId, user.id)
+    const site = await verifySiteOwnership(siteId, user.id)
     if (!site) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     const supabase = createServiceClient()
     const { data: sources } = await supabase
       .from("sources")
       .select("*")
-      .eq("site_id", params.siteId)
+      .eq("site_id", siteId)
       .order("created_at", { ascending: true })
 
     return NextResponse.json(sources || [])
@@ -37,11 +38,12 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  { params }: { params: { siteId: string } }
+  { params }: { params: Promise<{ siteId: string }> }
 ) {
   try {
+    const { siteId } = await params
     const user = await getAuthUser()
-    const site = await verifySiteOwnership(params.siteId, user.id)
+    const site = await verifySiteOwnership(siteId, user.id)
     if (!site) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     const supabase = createServiceClient()
@@ -51,7 +53,7 @@ export async function POST(
     const { count } = await supabase
       .from("sources")
       .select("*", { count: "exact", head: true })
-      .eq("site_id", params.siteId)
+      .eq("site_id", siteId)
 
     if ((count || 0) >= 10) {
       return NextResponse.json(
@@ -63,7 +65,7 @@ export async function POST(
     const { data: source, error } = await supabase
       .from("sources")
       .insert({
-        site_id: params.siteId,
+        site_id: siteId,
         type: body.type,
         url: body.url,
         label: body.label || null,
@@ -83,11 +85,12 @@ export async function POST(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { siteId: string } }
+  { params }: { params: Promise<{ siteId: string }> }
 ) {
   try {
+    const { siteId } = await params
     const user = await getAuthUser()
-    const site = await verifySiteOwnership(params.siteId, user.id)
+    const site = await verifySiteOwnership(siteId, user.id)
     if (!site) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     const supabase = createServiceClient()
@@ -102,7 +105,7 @@ export async function DELETE(
       .from("sources")
       .delete()
       .eq("id", sourceId)
-      .eq("site_id", params.siteId)
+      .eq("site_id", siteId)
 
     return NextResponse.json({ success: true })
   } catch {

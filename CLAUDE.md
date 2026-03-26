@@ -18,8 +18,8 @@ inkpop is a multi-tenant SaaS that auto-generates SEO blog posts using MindStudi
 
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router only, no Pages Router)
-- **Auth:** Clerk v5 (`@clerk/nextjs@5`)
+- **Framework:** Next.js 16 (App Router only, no Pages Router)
+- **Auth:** Clerk v7 (`@clerk/nextjs@7`)
 - **Database:** Supabase (Postgres) via `@supabase/supabase-js`
 - **Billing:** Stripe
 - **AI:** MindStudio SDK (`@mindstudio-ai/agent`) — scrapeUrl + generateText, runs locally (no remote agent)
@@ -42,7 +42,8 @@ Single middleware handles both subdomain detection and Clerk auth:
 - All DB access in MVP goes through API routes with service role key. No RLS configured.
 
 ### Auth Pattern
-- `src/lib/auth.ts` → `getAuthUser()` calls Clerk `auth()`, then queries Supabase for the DB user row (returns `id`, `clerk_id`, `email`, `subscription_status`, `credit_balance`)
+- `src/lib/auth.ts` → `getAuthUser()` calls Clerk `await auth()`, then queries Supabase for the DB user row (returns `id`, `clerk_id`, `email`, `subscription_status`, `credit_balance`)
+- All `params` and `searchParams` in pages/layouts/routes are `Promise` types and must be awaited
 - Every API route that accesses user-scoped resources calls `getAuthUser()` then verifies ownership (e.g., `site.user_id === dbUser.id`)
 - Nested resource ownership: posts are verified through `posts → sites → users` chain
 
@@ -227,4 +228,4 @@ See `.env.example` for the template.
 
 ## ESLint
 
-Underscore-prefixed args (`_req`, `_params`) are allowed as unused. Configured in `.eslintrc.json`.
+Underscore-prefixed args (`_req`, `_params`) are allowed as unused. Configured in `eslint.config.mjs` (ESLint 9 flat config).

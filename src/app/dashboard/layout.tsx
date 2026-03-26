@@ -11,7 +11,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { userId } = auth()
+  const { userId } = await auth()
   if (!userId) redirect("/sign-in")
 
   const user = await currentUser()
@@ -43,12 +43,12 @@ export default async function DashboardLayout({
     return (
       <SidebarProvider>
         <div className="flex h-screen overflow-hidden">
-          <Sidebar creditBalance={newUser?.credit_balance ?? 0} sites={[]} userName="" />
+          <Sidebar creditBalance={newUser?.credit_balance ?? 0} sites={[]} />
           <main className="flex-1 overflow-y-auto">
             <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-6 py-3">
               <SidebarToggle />
             </div>
-            <div className="mx-auto max-w-4xl px-8 py-8 lg:px-12">{children}</div>
+            <div className="px-8 py-8 lg:px-12">{children}</div>
           </main>
         </div>
       </SidebarProvider>
@@ -81,13 +81,12 @@ export default async function DashboardLayout({
         <Sidebar
           creditBalance={dbUser?.credit_balance ?? 0}
           sites={sites ?? []}
-          userName={dbUser.name ?? ""}
         />
         <main className="flex-1 overflow-y-auto">
           <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-6 py-3">
             <SidebarToggle />
           </div>
-          <div className="mx-auto max-w-4xl px-8 py-8 lg:px-12">{children}</div>
+          <div className="px-8 py-8 lg:px-12">{children}</div>
         </main>
       </div>
     </SidebarProvider>

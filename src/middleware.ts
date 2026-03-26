@@ -11,7 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/blog(.*)",
 ])
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   const hostname = req.headers.get("host") || ""
   const appDomain =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/https?:\/\//, "") || ""
@@ -47,7 +47,7 @@ export default clerkMiddleware((auth, req) => {
 
   // For main domain: protect non-public routes
   if (!isPublicRoute(req)) {
-    auth().protect()
+    await auth.protect()
   }
 
   // Set pathname header for server components

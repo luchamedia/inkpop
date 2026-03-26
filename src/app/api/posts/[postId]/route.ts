@@ -16,11 +16,12 @@ async function verifyPostOwnership(postId: string, userId: string) {
 
 export async function GET(
   _req: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const user = await getAuthUser()
-    const post = await verifyPostOwnership(params.postId, user.id)
+    const post = await verifyPostOwnership(postId, user.id)
 
     if (!post) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -34,11 +35,12 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const user = await getAuthUser()
-    const post = await verifyPostOwnership(params.postId, user.id)
+    const post = await verifyPostOwnership(postId, user.id)
 
     if (!post) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -54,7 +56,7 @@ export async function PATCH(
         body: body.body,
         meta_description: body.meta_description,
       })
-      .eq("id", params.postId)
+      .eq("id", postId)
       .select()
       .single()
 

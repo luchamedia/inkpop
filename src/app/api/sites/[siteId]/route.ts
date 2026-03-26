@@ -4,16 +4,17 @@ import { createServiceClient } from "@/lib/supabase/server"
 
 export async function GET(
   _req: Request,
-  { params }: { params: { siteId: string } }
+  { params }: { params: Promise<{ siteId: string }> }
 ) {
   try {
+    const { siteId } = await params
     const user = await getAuthUser()
     const supabase = createServiceClient()
 
     const { data: site } = await supabase
       .from("sites")
       .select("*, sources(*)")
-      .eq("id", params.siteId)
+      .eq("id", siteId)
       .eq("user_id", user.id)
       .single()
 
@@ -29,9 +30,10 @@ export async function GET(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { siteId: string } }
+  { params }: { params: Promise<{ siteId: string }> }
 ) {
   try {
+    const { siteId } = await params
     const user = await getAuthUser()
     const supabase = createServiceClient()
 
@@ -39,7 +41,7 @@ export async function DELETE(
     const { data: site } = await supabase
       .from("sites")
       .select("id")
-      .eq("id", params.siteId)
+      .eq("id", siteId)
       .eq("user_id", user.id)
       .single()
 
@@ -50,7 +52,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("sites")
       .delete()
-      .eq("id", params.siteId)
+      .eq("id", siteId)
 
     if (error) {
       return NextResponse.json({ error: "Failed to delete site" }, { status: 500 })
@@ -64,9 +66,10 @@ export async function DELETE(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { siteId: string } }
+  { params }: { params: Promise<{ siteId: string }> }
 ) {
   try {
+    const { siteId } = await params
     const user = await getAuthUser()
     const supabase = createServiceClient()
 
@@ -74,7 +77,7 @@ export async function PATCH(
     const { data: site } = await supabase
       .from("sites")
       .select("id")
-      .eq("id", params.siteId)
+      .eq("id", siteId)
       .eq("user_id", user.id)
       .single()
 
@@ -95,6 +98,15 @@ export async function PATCH(
     if (body.name && typeof body.name === "string") {
       updates.name = body.name.slice(0, 100)
     }
+    if (body.topic !== undefined) {
+      updates.topic = typeof body.topic === "string" ? body.topic.slice(0, 500) : null
+    }
+    if (body.description !== undefined) {
+      updates.description = typeof body.description === "string" ? body.description.slice(0, 1000) : null
+    }
+    if (body.category !== undefined) {
+      updates.category = typeof body.category === "string" ? body.category.slice(0, 100) : null
+    }
     if (body.writing_prompt !== undefined) {
       updates.writing_prompt = typeof body.writing_prompt === "string" ? body.writing_prompt : null
     }
@@ -109,7 +121,7 @@ export async function PATCH(
     const { data: updated } = await supabase
       .from("sites")
       .update(updates)
-      .eq("id", params.siteId)
+      .eq("id", siteId)
       .select()
       .single()
 

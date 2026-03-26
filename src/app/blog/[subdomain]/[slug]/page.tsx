@@ -3,17 +3,20 @@ import { notFound } from "next/navigation"
 import sanitizeHtml from "sanitize-html"
 import type { Metadata } from "next"
 
+export const revalidate = 3600
+
 export async function generateMetadata({
   params,
 }: {
-  params: { subdomain: string; slug: string }
+  params: Promise<{ subdomain: string; slug: string }>
 }): Promise<Metadata> {
+  const { subdomain, slug } = await params
   const supabase = createServiceClient()
 
   const { data: site } = await supabase
     .from("sites")
     .select("id, name")
-    .eq("subdomain", params.subdomain)
+    .eq("subdomain", subdomain)
     .single()
 
   if (!site) return {}
@@ -22,7 +25,7 @@ export async function generateMetadata({
     .from("posts")
     .select("title, meta_description")
     .eq("site_id", site.id)
-    .eq("slug", params.slug)
+    .eq("slug", slug)
     .eq("status", "published")
     .single()
 
@@ -37,14 +40,15 @@ export async function generateMetadata({
 export default async function BlogPostPage({
   params,
 }: {
-  params: { subdomain: string; slug: string }
+  params: Promise<{ subdomain: string; slug: string }>
 }) {
+  const { subdomain, slug } = await params
   const supabase = createServiceClient()
 
   const { data: site } = await supabase
     .from("sites")
     .select("id")
-    .eq("subdomain", params.subdomain)
+    .eq("subdomain", subdomain)
     .single()
 
   if (!site) notFound()
@@ -53,7 +57,7 @@ export default async function BlogPostPage({
     .from("posts")
     .select("*")
     .eq("site_id", site.id)
-    .eq("slug", params.slug)
+    .eq("slug", slug)
     .eq("status", "published")
     .single()
 

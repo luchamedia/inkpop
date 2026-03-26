@@ -4,9 +4,10 @@ import { createServiceClient } from "@/lib/supabase/server"
 
 export async function POST(
   _req: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const user = await getAuthUser()
     const supabase = createServiceClient()
 
@@ -14,7 +15,7 @@ export async function POST(
     const { data: post } = await supabase
       .from("posts")
       .select("*, sites!inner(user_id)")
-      .eq("id", params.postId)
+      .eq("id", postId)
       .single()
 
     if (!post || post.sites.user_id !== user.id) {
@@ -27,7 +28,7 @@ export async function POST(
         status: "published",
         published_at: new Date().toISOString(),
       })
-      .eq("id", params.postId)
+      .eq("id", postId)
       .select()
       .single()
 
