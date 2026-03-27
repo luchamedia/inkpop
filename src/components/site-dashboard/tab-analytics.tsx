@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 
 export function TabAnalytics() {
   return (
-    <div className="mt-6">
+    <div className="mt-8">
       <EmptyState
         icon={BarChart3}
         title="Analytics"

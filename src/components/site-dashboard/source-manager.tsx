@@ -78,9 +78,9 @@ export function SourceManager({ siteId, initialSources, topic: _topic }: SourceM
 
   return (
     <div>
-      <h3 className="font-serif text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-        Sources ({sources.length}/{SOURCE_LIMIT})
-      </h3>
+      <p className="text-xs text-muted-foreground mb-3">
+        {sources.length}/{SOURCE_LIMIT} sources configured
+      </p>
 
       {sources.length < SOURCE_LIMIT && (
         <div className="mb-6 space-y-4">

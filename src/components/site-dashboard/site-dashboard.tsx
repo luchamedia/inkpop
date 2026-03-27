@@ -3,11 +3,10 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { ExternalLink } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { RunAgentButton } from "@/components/agent/run-agent-button"
 import { TabOverview } from "./tab-overview"
 import { TabPosts } from "./tab-posts"
 import { TabContext } from "./tab-context"
-import { TabStyles } from "./tab-styles"
+import { TabSources } from "./tab-sources"
 import { TabSettings } from "./tab-settings"
 import { TabPromotions } from "./tab-promotions"
 import { TabAnalytics } from "./tab-analytics"
@@ -24,6 +23,9 @@ export interface SiteData {
   posts_per_period: number | null
   writing_prompt: string | null
   writing_prompt_inputs: Record<string, unknown> | null
+  context_files: Record<string, unknown> | null
+  auto_publish: boolean
+  schedule_confirmed: boolean
   sources: SourceData[]
 }
 
@@ -51,13 +53,14 @@ interface SiteDashboardProps {
   drafts: PostData[]
   published: PostData[]
   creditBalance: number
+  hasPaymentMethod: boolean
 }
 
 const TABS = [
   { value: "overview", label: "Overview" },
   { value: "posts", label: "Posts" },
   { value: "context", label: "Context" },
-  { value: "styles", label: "Styles" },
+  { value: "sources", label: "Sources" },
   { value: "settings", label: "Settings" },
   { value: "promotions", label: "Promotions" },
   { value: "analytics", label: "Analytics" },
@@ -65,7 +68,7 @@ const TABS = [
 
 type TabValue = (typeof TABS)[number]["value"]
 
-export function SiteDashboard({ site, drafts, published, creditBalance }: SiteDashboardProps) {
+export function SiteDashboard({ site, drafts, published, creditBalance, hasPaymentMethod }: SiteDashboardProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -100,7 +103,6 @@ export function SiteDashboard({ site, drafts, published, creditBalance }: SiteDa
             </a>
           </p>
         </div>
-        <RunAgentButton siteId={site.id} creditBalance={creditBalance} />
       </div>
 
     <Tabs value={currentTab} onValueChange={handleTabChange}>
@@ -118,6 +120,7 @@ export function SiteDashboard({ site, drafts, published, creditBalance }: SiteDa
           drafts={drafts}
           published={published}
           creditBalance={creditBalance}
+          hasPaymentMethod={hasPaymentMethod}
         />
       </TabsContent>
 
@@ -134,8 +137,8 @@ export function SiteDashboard({ site, drafts, published, creditBalance }: SiteDa
         <TabContext site={site} />
       </TabsContent>
 
-      <TabsContent value="styles">
-        <TabStyles />
+      <TabsContent value="sources">
+        <TabSources site={site} />
       </TabsContent>
 
       <TabsContent value="settings">
