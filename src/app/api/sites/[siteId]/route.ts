@@ -92,7 +92,7 @@ export async function PATCH(
     if (body.posting_schedule && ["daily", "weekly", "custom"].includes(body.posting_schedule)) {
       updates.posting_schedule = body.posting_schedule
     }
-    if (body.posts_per_period && Number.isInteger(body.posts_per_period) && body.posts_per_period > 0 && body.posts_per_period <= 50) {
+    if (body.posts_per_period && Number.isInteger(body.posts_per_period) && body.posts_per_period > 0 && body.posts_per_period <= 100) {
       updates.posts_per_period = body.posts_per_period
     }
     if (body.name && typeof body.name === "string") {
@@ -107,11 +107,23 @@ export async function PATCH(
     if (body.category !== undefined) {
       updates.category = typeof body.category === "string" ? body.category.slice(0, 100) : null
     }
+    if (body.topic_context !== undefined) {
+      updates.topic_context = typeof body.topic_context === "object" ? body.topic_context : null
+    }
     if (body.writing_prompt !== undefined) {
       updates.writing_prompt = typeof body.writing_prompt === "string" ? body.writing_prompt : null
     }
     if (body.writing_prompt_inputs !== undefined) {
       updates.writing_prompt_inputs = typeof body.writing_prompt_inputs === "object" ? body.writing_prompt_inputs : null
+    }
+    if (body.context_files !== undefined) {
+      updates.context_files = typeof body.context_files === "object" && body.context_files !== null ? body.context_files : {}
+    }
+    if (body.auto_publish !== undefined) {
+      updates.auto_publish = body.auto_publish === true
+    }
+    if (body.schedule_confirmed !== undefined) {
+      updates.schedule_confirmed = body.schedule_confirmed === true
     }
 
     if (Object.keys(updates).length === 0) {

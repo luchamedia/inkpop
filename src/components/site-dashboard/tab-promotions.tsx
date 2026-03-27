@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 
 export function TabPromotions() {
   return (
-    <div className="mt-6">
+    <div className="mt-8">
       <EmptyState
         icon={Megaphone}
         title="Promotions"

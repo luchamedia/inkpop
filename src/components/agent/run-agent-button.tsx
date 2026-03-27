@@ -79,7 +79,7 @@ export function RunAgentButton({ siteId, creditBalance, size }: RunAgentButtonPr
       ) : (
         <>
           <Sparkles className="mr-2 h-4 w-4" />
-          Run Agent
+          Generate Blog Post
         </>
       )}
     </Button>

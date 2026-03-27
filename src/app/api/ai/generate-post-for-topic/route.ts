@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     // Verify ownership + fetch sources
     const { data: site } = await supabase
       .from("sites")
-      .select("id, topic, description, topic_context, sources(*)")
+      .select("id, topic, description, topic_context, writing_prompt, sources(*)")
       .eq("id", siteId)
       .eq("user_id", user.id)
       .single()
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const post = await generatePostForTopic(
       topic,
       site.sources || [],
-      { topic: site.topic, description: site.description, topicContext: site.topic_context }
+      { topic: site.topic, description: site.description, topicContext: site.topic_context, writingPrompt: site.writing_prompt }
     )
 
     if (!post) {
