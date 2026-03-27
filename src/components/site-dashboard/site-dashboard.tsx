@@ -104,32 +104,29 @@ export function SiteDashboard({ site, drafts, published, creditBalance, hasPayme
 
   return (
     <div>
-      {/* Site header — persistent above tabs */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="font-serif text-3xl font-semibold tracking-tight">{site.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <a
-              href={`https://${site.subdomain}.inkpop.net`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline"
-            >
-              {site.subdomain}.inkpop.net
-              <ExternalLink className="ml-1 inline h-3 w-3" />
-            </a>
-          </p>
-        </div>
-      </div>
-
     <Tabs value={currentTab} onValueChange={handleTabChange}>
-      <TabsList>
-        {TABS.map((tab) => (
-          <TabsTrigger key={tab.value} value={tab.value}>
-            {tab.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+      {/* Sticky top bar: site name + tabs */}
+      <div className="sticky top-0 z-30 -mx-6 px-6 bg-background/95 backdrop-blur-sm border-b border-border pb-0">
+        <div className="flex items-center justify-between pt-4 pb-3">
+          <h1 className="font-serif text-xl font-semibold tracking-tight">{site.name}</h1>
+          <a
+            href={`https://${site.subdomain}.inkpop.net`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {site.subdomain}.inkpop.net
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+        <TabsList>
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </div>
 
       <TabsContent value="overview">
         <TabOverview
