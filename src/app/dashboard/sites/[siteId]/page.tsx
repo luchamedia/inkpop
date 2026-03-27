@@ -16,7 +16,7 @@ export default async function SiteDetailPage({
 
   const { data: dbUser } = await supabase
     .from("users")
-    .select("id, credit_balance")
+    .select("id, credit_balance, stripe_customer_id")
     .eq("clerk_id", userId)
     .single()
 
@@ -59,11 +59,15 @@ export default async function SiteDetailPage({
         posts_per_period: site.posts_per_period,
         writing_prompt: site.writing_prompt,
         writing_prompt_inputs: site.writing_prompt_inputs,
+        context_files: site.context_files,
+        auto_publish: site.auto_publish ?? true,
+        schedule_confirmed: site.schedule_confirmed ?? false,
         sources: site.sources || [],
       }}
       drafts={drafts || []}
       published={published || []}
       creditBalance={dbUser.credit_balance ?? 0}
+      hasPaymentMethod={!!dbUser.stripe_customer_id}
     />
   )
 }

@@ -8,11 +8,12 @@ import {
   BookOpen,
   CalendarClock,
   ArrowRight,
-  Sparkles,
   Globe,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { RunAgentButton } from "@/components/agent/run-agent-button"
+import { SetupProgress } from "./setup-progress"
 import type { SiteData, PostData } from "./site-dashboard"
 
 interface TabOverviewProps {
@@ -20,9 +21,10 @@ interface TabOverviewProps {
   drafts: PostData[]
   published: PostData[]
   creditBalance: number
+  hasPaymentMethod: boolean
 }
 
-export function TabOverview({ site, drafts, published, creditBalance }: TabOverviewProps) {
+export function TabOverview({ site, drafts, published, creditBalance, hasPaymentMethod }: TabOverviewProps) {
   const draftCount = drafts.length
   const publishedCount = published.length
   const sourceCount = site.sources?.length || 0
@@ -39,6 +41,14 @@ export function TabOverview({ site, drafts, published, creditBalance }: TabOverv
 
   return (
     <div className="mt-8 space-y-8">
+      <SetupProgress
+        site={site}
+        drafts={drafts}
+        published={published}
+        creditBalance={creditBalance}
+        hasPaymentMethod={hasPaymentMethod}
+      />
+
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card className="border border-border">
@@ -92,14 +102,17 @@ export function TabOverview({ site, drafts, published, creditBalance }: TabOverv
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <h3 className="font-serif text-sm font-medium">Posts</h3>
               </div>
-              {(draftCount + publishedCount > 0) && (
-                <Link
-                  href="?tab=posts"
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  View all <ArrowRight className="h-3 w-3" />
-                </Link>
-              )}
+              <div className="flex items-center gap-2">
+                {(draftCount + publishedCount > 0) && (
+                  <Link
+                    href="?tab=posts"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    View all <ArrowRight className="h-3 w-3" />
+                  </Link>
+                )}
+                <RunAgentButton siteId={site.id} creditBalance={creditBalance} size="sm" />
+              </div>
             </div>
             {draftCount + publishedCount > 0 ? (
               <div className="space-y-3">
@@ -124,16 +137,9 @@ export function TabOverview({ site, drafts, published, creditBalance }: TabOverv
               </div>
             ) : (
               <div className="rounded bg-muted/50 py-8 px-4 flex flex-col items-center text-center">
-                <Sparkles className="h-8 w-8 text-muted-foreground/60 mb-3" />
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-muted-foreground">
                   No posts yet. Generate your first AI-powered blog post.
                 </p>
-                <Button asChild size="sm">
-                  <Link href="?tab=posts">
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    Go to posts
-                  </Link>
-                </Button>
               </div>
             )}
           </CardContent>

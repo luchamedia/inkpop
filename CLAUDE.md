@@ -59,19 +59,25 @@ No subscription gate — all authenticated users access the dashboard freely.
 
 ### AI Content Generation (`src/lib/mindstudio.ts`)
 Uses the `@mindstudio-ai/agent` SDK directly (no remote agent, no polling):
-1. `scrapeUrl()` — scrapes each source URL in parallel for main content
-2. `generateText()` — sends scraped content to an LLM with a blog-writing prompt, returns structured JSON
-3. `generatePosts(sources, siteContext?)` — scrape → generate → return `GeneratedPost[]`. Optional `SiteContext` (topic, description, category) enriches the prompt.
-4. `generatePostForTopic(topic, sources, siteContext?)` — generates a single post on a specific topic
-5. `suggestSources(query)` — AI-powered source discovery (Google+Perplexity search → ranking → scrape validation)
 
-The flow is synchronous: the API route calls `generatePosts()`, persists results to Supabase, and returns. No job IDs or polling.
+**Generation Workflow v2 (daily cron):**
+1. `scanSourceForChanges(source, supabase)` — branches by source type: YouTube sources fetch channel videos + transcripts via `fetchYoutubeChannel`/`fetchYoutubeCaptions`, blog sources try RSS/Atom feed parsing first (with 48h lookback) then fall back to scraping, webpage sources use standard `scrapeUrl`. SHA-256 hashes content, compares to last `source_snapshots` row to detect new content
+2. `extractLearnings(scrapedContent[], siteContext)` — extracts 3-8 key learnings per source (facts, trends, techniques) as structured JSON
+3. `ideateArticles(learnings, siteContext, existingTitles, count=20)` — generates ~20 article ideas based on accumulated learnings (last 30 days), avoiding duplicate topics
+4. `writeArticle(idea, learnings, siteContext)` — writes a full blog post from an idea, with Google web search for current facts
+5. `runGenerationWorkflow(site, supabase)` — orchestrates the full pipeline: scan → extract → ideate → write top N → return remaining ideas
+6. Ideas are stored in `post_ideas` with a 2-week shelf life. Users can generate posts from ideas on demand.
+
+**Legacy functions (still used for manual generation):**
+- `generatePosts(sources, siteContext?)` — scrape all → generate → return `GeneratedPost[]`
+- `generatePostForTopic(topic, sources, siteContext?)` — generates a single post on a specific topic
+- `suggestSources(query)` — AI-powered source discovery (Google+Perplexity search → ranking → scrape validation)
 
 ### Component Patterns
 - **Server components** for data fetching (dashboard pages query Supabase directly)
 - **Client components** (`"use client"`) for interactivity (onboarding wizard, post editor)
 - New site wizard (`src/components/new-site/new-site-wizard.tsx`): 4-step flow — `StepTopic` (AI topic brief) → `StepSources` (AI suggestions) → `StepSchedule` → `StepName` (AI name suggestions)
-- Site to-do list (`src/components/dashboard/site-todo-list.tsx`): guided setup checklist on site dashboard
+- Setup progress (`src/components/site-dashboard/setup-progress.tsx`): auto-dismissing onboarding cards on site overview — tracks sources, prompt, schedule, payments, first post, first publish
 - `RunAgentButton` (`src/components/agent/run-agent-button.tsx`): checks `creditBalance` prop — shows "Buy Credits" if 0, otherwise triggers generation via POST to `/api/agent/run`
 - Subdomain availability: debounced (500ms) POST to `/api/sites` with `checkSubdomain: true`
 
@@ -99,7 +105,9 @@ Usage-based billing via pre-purchased credit packs (10/$5, 50/$22.50, 100/$40). 
 - **Publish:** POST `/api/posts/[postId]/publish` sets status=published, published_at=now
 - **Stripe webhook:** `checkout.session.completed` → reads metadata (pack, credits) → calls `addCredits()`. Uses `req.text()` for raw body (signature verification).
 - **Monthly free credits:** 5 credits/month, no stacking. Dual triggers: (1) cron at midnight UTC on 1st (`/api/cron/monthly-credits`), (2) login-check fallback in dashboard layout. New users get 5 credits immediately on signup.
-- **Cron (daily):** GET `/api/cron/daily-run` with `Authorization: Bearer CRON_SECRET` → runs `generatePosts()` for all sites where user has credits or auto-renew enabled, attempts auto-renew on insufficient balance, deducts per site
+- **Cron (daily):** GET `/api/cron/daily-run` with `Authorization: Bearer CRON_SECRET` → for each site with credits/auto-renew: runs `runGenerationWorkflow()` (scan sources for new content → extract learnings → ideate ~20 ideas → write top N posts) → stores remaining ideas in `post_ideas` (2-week TTL) → if `auto_publish` is true, posts are published automatically; otherwise saved as drafts → deducts credits per post written
+- **Generate from idea:** POST `/api/sites/[siteId]/ideas/[ideaId]/generate` → loads idea metadata → calls `writeArticle()` → deducts 1 credit → inserts post (respects `auto_publish` setting)
+- **Ideas:** GET `/api/sites/[siteId]/ideas` → returns active, non-expired ideas for a site. Ideas expire after 14 days.
 - **Cron (monthly):** GET `/api/cron/monthly-credits` with `Authorization: Bearer CRON_SECRET` → grants free credits to all eligible users
 
 ### Route Structure
@@ -107,11 +115,11 @@ Usage-based billing via pre-purchased credit packs (10/$5, 50/$22.50, 100/$40). 
 - Standalone: `/setup` (post-signup name collection), `/new-site` (site creation wizard) — auth-protected, no dashboard layout
 - Dashboard: `/dashboard/**` (auth-protected, includes `/dashboard/billing`, `/dashboard/top-up`)
 - Blog: `/blog/[subdomain]/**` (public, served via subdomain rewrite)
-- API: `/api/checkout`, `/api/webhooks/stripe`, `/api/agent/run`, `/api/ai/suggest-sources`, `/api/ai/topic-questions`, `/api/ai/scan-company`, `/api/ai/suggest-names`, `/api/ai/generate-post-for-topic`, `/api/billing/auto-renew`, `/api/users/setup`, `/api/posts/**`, `/api/sites/**`, `/api/cron/daily-run`, `/api/cron/monthly-credits`
+- API: `/api/checkout`, `/api/webhooks/stripe`, `/api/agent/run`, `/api/ai/suggest-sources`, `/api/ai/topic-questions`, `/api/ai/scan-company`, `/api/ai/suggest-names`, `/api/ai/generate-post-for-topic`, `/api/billing/auto-renew`, `/api/users/setup`, `/api/posts/**`, `/api/sites/**`, `/api/sites/[siteId]/ideas`, `/api/sites/[siteId]/ideas/[ideaId]/generate`, `/api/cron/daily-run`, `/api/cron/monthly-credits`
 
 ## Database
 
-5 tables, created manually in Supabase SQL Editor. No RLS — ownership enforced in application code.
+9 tables, created manually in Supabase SQL Editor. No RLS — ownership enforced in application code.
 
 ```sql
 CREATE TABLE users (
@@ -139,6 +147,8 @@ CREATE TABLE sites (
   category text,
   posting_schedule text DEFAULT 'weekly',
   posts_per_period integer DEFAULT 1,
+  auto_publish boolean DEFAULT true,
+  schedule_confirmed boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
 
@@ -160,7 +170,52 @@ CREATE TABLE posts (
   meta_description text,
   status text DEFAULT 'draft',
   generated_at timestamptz DEFAULT now(),
-  published_at timestamptz
+  published_at timestamptz,
+  generation_run_id uuid REFERENCES generation_runs(id) ON DELETE SET NULL,
+  idea_id uuid REFERENCES post_ideas(id) ON DELETE SET NULL
+);
+
+CREATE TABLE source_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_id uuid REFERENCES sources(id) ON DELETE CASCADE NOT NULL,
+  content_hash text NOT NULL,
+  content_preview text,
+  scraped_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE source_learnings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
+  source_id uuid REFERENCES sources(id) ON DELETE SET NULL,
+  learnings jsonb NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE generation_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  sources_scanned integer DEFAULT 0,
+  new_content_found integer DEFAULT 0,
+  learnings_extracted integer DEFAULT 0,
+  ideas_generated integer DEFAULT 0,
+  posts_generated integer DEFAULT 0,
+  credit_deducted boolean DEFAULT false,
+  status text DEFAULT 'running',
+  started_at timestamptz DEFAULT now(),
+  completed_at timestamptz
+);
+
+CREATE TABLE post_ideas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
+  generation_run_id uuid REFERENCES generation_runs(id) ON DELETE SET NULL,
+  title text NOT NULL,
+  angle text NOT NULL,
+  key_learnings jsonb NOT NULL,
+  status text DEFAULT 'active',
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz DEFAULT now()
 );
 
 CREATE TABLE credit_transactions (
