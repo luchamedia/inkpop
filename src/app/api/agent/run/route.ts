@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     // Verify ownership
     const { data: site } = await supabase
       .from("sites")
-      .select("id, topic, description, topic_context, writing_prompt, sources(*)")
+      .select("id, topic, description, topic_context, writing_prompt, context_files, sources(*)")
       .eq("id", siteId)
       .eq("user_id", user.id)
       .single()
