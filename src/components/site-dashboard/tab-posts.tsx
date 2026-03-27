@@ -4,7 +4,6 @@ import { FileText, Lightbulb } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { PostCard } from "@/components/posts/post-card"
-import { RunAgentButton } from "@/components/agent/run-agent-button"
 import { PostScheduleCard } from "./post-schedule-card"
 import { IdeaList } from "./idea-list"
 import type { SiteData, PostData } from "./site-dashboard"
@@ -23,12 +22,9 @@ export function TabPosts({ site, drafts, published, creditBalance }: TabPostsPro
 
       <Card className="border border-border">
         <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-serif text-sm font-medium">Content Inbox</h3>
-            </div>
-            <RunAgentButton siteId={site.id} creditBalance={creditBalance} size="sm" />
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-serif text-sm font-medium">Content Inbox</h3>
           </div>
 
           <Tabs defaultValue="ideas">
@@ -49,7 +45,7 @@ export function TabPosts({ site, drafts, published, creditBalance }: TabPostsPro
               {drafts.length === 0 ? (
                 <div className="rounded bg-muted/50 py-8 px-4 flex flex-col items-center text-center">
                   <p className="text-sm text-muted-foreground">
-                    No drafts yet. Click &quot;Generate Blog Post&quot; to create content.
+                    No drafts yet. Generate ideas first, then create posts from them.
                   </p>
                 </div>
               ) : (

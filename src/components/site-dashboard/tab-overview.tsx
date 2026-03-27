@@ -12,7 +12,6 @@ import {
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RunAgentButton } from "@/components/agent/run-agent-button"
 import { SetupProgress } from "./setup-progress"
 import type { SiteData, PostData } from "./site-dashboard"
 
@@ -101,17 +100,12 @@ export function TabOverview({ site, drafts, published, creditBalance, hasPayment
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <h3 className="font-serif text-sm font-medium">Posts</h3>
               </div>
-              <div className="flex items-center gap-2">
-                {(draftCount + publishedCount > 0) && (
-                  <Link
-                    href="?tab=posts"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    View all <ArrowRight className="h-3 w-3" />
-                  </Link>
-                )}
-                <RunAgentButton siteId={site.id} creditBalance={creditBalance} size="sm" />
-              </div>
+              <Link
+                href="?tab=posts"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Manage <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
             {draftCount + publishedCount > 0 ? (
               <div className="space-y-3">
@@ -137,7 +131,7 @@ export function TabOverview({ site, drafts, published, creditBalance, hasPayment
             ) : (
               <div className="rounded bg-muted/50 py-8 px-4 flex flex-col items-center text-center">
                 <p className="text-sm text-muted-foreground">
-                  No posts yet. Generate your first AI-powered blog post.
+                  No posts yet. Generate ideas and create your first blog post.
                 </p>
               </div>
             )}
