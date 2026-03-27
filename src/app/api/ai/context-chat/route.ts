@@ -46,7 +46,31 @@ export async function POST(req: Request) {
     let scanContext = ""
     const urlMatch = body.message.match(/https?:\/\/[^\s]+/)
     if (urlMatch) {
+      // SSRF protection: block private/internal URLs
       try {
+        const parsed = new URL(urlMatch[0])
+        const hostname = parsed.hostname.toLowerCase()
+        const blockedPatterns = [
+          /^localhost$/,
+          /^127\./,
+          /^10\./,
+          /^172\.(1[6-9]|2\d|3[01])\./,
+          /^192\.168\./,
+          /^0\./,
+          /^169\.254\./,
+          /^::1$/,
+          /^fc00:/,
+          /^fe80:/,
+          /\.local$/,
+          /\.internal$/,
+        ]
+        if (blockedPatterns.some((p) => p.test(hostname))) {
+          scanContext = "\n\n[Cannot scan internal or private URLs.]"
+        }
+      } catch {
+        scanContext = "\n\n[Invalid URL provided.]"
+      }
+      if (!scanContext) try {
         const scrapeResult = await agent.scrapeUrl({
           url: urlMatch[0],
           pageOptions: {

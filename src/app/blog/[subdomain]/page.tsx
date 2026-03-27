@@ -1,8 +1,41 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import type { Metadata } from "next"
 
 export const revalidate = 3600
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ subdomain: string }>
+}): Promise<Metadata> {
+  const { subdomain } = await params
+  const supabase = createServiceClient()
+
+  const { data: site } = await supabase
+    .from("sites")
+    .select("name, description")
+    .eq("subdomain", subdomain)
+    .single()
+
+  if (!site) return {}
+
+  const url = `https://${subdomain}.inkpop.net`
+
+  return {
+    title: site.name,
+    description: site.description || `Blog posts from ${site.name}`,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      title: site.name,
+      description: site.description || `Blog posts from ${site.name}`,
+      url,
+      siteName: site.name,
+    },
+  }
+}
 
 export default async function BlogIndex({
   params,
