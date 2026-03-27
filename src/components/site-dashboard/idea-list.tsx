@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { useSearchParams } from "next/navigation"
 import { Lightbulb, Loader2, Sparkles, Clock, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +35,8 @@ export function IdeaList({ siteId, creditBalance }: IdeaListProps) {
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const autoScanned = useRef(false)
 
   const fetchIdeas = useCallback(async () => {
     setLoadingIdeas(true)
@@ -53,6 +56,15 @@ export function IdeaList({ siteId, creditBalance }: IdeaListProps) {
   useEffect(() => {
     fetchIdeas()
   }, [fetchIdeas])
+
+  // Auto-scan when navigated with ?autoScan=1 (from onboarding card)
+  useEffect(() => {
+    if (searchParams.get("autoScan") === "1" && !autoScanned.current) {
+      autoScanned.current = true
+      handleScanForIdeas()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   async function handleGenerateFromIdea(ideaId: string) {
     if (creditBalance <= 0) {

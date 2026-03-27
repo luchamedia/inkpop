@@ -45,7 +45,6 @@ export function TabOverview({ site, drafts, published, creditBalance, hasPayment
         site={site}
         drafts={drafts}
         published={published}
-        creditBalance={creditBalance}
         hasPaymentMethod={hasPaymentMethod}
       />
 

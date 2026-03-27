@@ -15,7 +15,6 @@ import {
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RunAgentButton } from "@/components/agent/run-agent-button"
 import { useToast } from "@/hooks/use-toast"
 import { patchSite } from "@/lib/client-helpers"
 import type { SiteData, PostData } from "./site-dashboard"
@@ -24,7 +23,6 @@ interface SetupProgressProps {
   site: SiteData
   drafts: PostData[]
   published: PostData[]
-  creditBalance: number
   hasPaymentMethod: boolean
 }
 
@@ -41,7 +39,6 @@ export function SetupProgress({
   site,
   drafts,
   published,
-  creditBalance,
   hasPaymentMethod,
 }: SetupProgressProps) {
   const router = useRouter()
@@ -136,7 +133,11 @@ export function SetupProgress({
       description: "Use AI to create a blog post from your sources.",
       icon: Sparkles,
       isComplete: drafts.length > 0 || published.length > 0,
-      cta: <RunAgentButton siteId={site.id} creditBalance={creditBalance} size="sm" />,
+      cta: (
+        <Button asChild size="sm" variant="outline">
+          <Link href="?tab=posts&autoScan=1">Generate Ideas</Link>
+        </Button>
+      ),
     },
     {
       id: "publish-post",
