@@ -45,13 +45,24 @@ export async function PATCH(
     const supabase = createServiceClient()
     const body = await req.json()
 
+    const updates: Record<string, string> = {}
+    if (body.title && typeof body.title === "string") {
+      updates.title = body.title.slice(0, 200)
+    }
+    if (body.body && typeof body.body === "string") {
+      updates.body = body.body.slice(0, 100_000)
+    }
+    if (body.meta_description && typeof body.meta_description === "string") {
+      updates.meta_description = body.meta_description.slice(0, 160)
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
+    }
+
     const { data: updated, error } = await supabase
       .from("posts")
-      .update({
-        title: body.title,
-        body: body.body,
-        meta_description: body.meta_description,
-      })
+      .update(updates)
       .eq("id", postId)
       .select()
       .single()

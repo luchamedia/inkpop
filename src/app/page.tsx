@@ -1,7 +1,17 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { auth } from "@clerk/nextjs/server"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "inkpop - AI-Powered SEO Blog Platform",
+  description:
+    "5x your organic traffic with AI-generated SEO content. Connect sources, generate posts, publish to your own blog. 5 free posts every month.",
+  alternates: {
+    canonical: "https://inkpop.net",
+  },
+}
 
 const features = [
   {

@@ -31,9 +31,24 @@ export async function generateMetadata({
 
   if (!post) return {}
 
+  const url = `https://${subdomain}.inkpop.net/${slug}`
+
   return {
     title: `${post.title} | ${site.name}`,
     description: post.meta_description || undefined,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description: post.meta_description || undefined,
+      url,
+      siteName: site.name,
+    },
+    twitter: {
+      card: "summary",
+      title: post.title,
+      description: post.meta_description || undefined,
+    },
   }
 }
 
@@ -63,8 +78,26 @@ export default async function BlogPostPage({
 
   if (!post) notFound()
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.meta_description || undefined,
+    datePublished: post.published_at || undefined,
+    url: `https://${subdomain}.inkpop.net/${post.slug}`,
+    publisher: {
+      "@type": "Organization",
+      name: "inkpop",
+      url: "https://inkpop.net",
+    },
+  }
+
   return (
     <article>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="mb-10">
         <h1 className="font-serif text-3xl font-semibold leading-snug sm:text-4xl">
           {post.title}
