@@ -105,9 +105,9 @@ export function SiteDashboard({ site, drafts, published, creditBalance, hasPayme
   return (
     <div>
     <Tabs value={currentTab} onValueChange={handleTabChange}>
-      {/* Sticky top bar: site name + tabs */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 bg-background/95 backdrop-blur-sm border-b border-border pb-0">
-        <div className="flex items-center justify-between pt-4 pb-3">
+      {/* Sticky top bar: site name + link + tabs */}
+      <div className="sticky top-0 z-30 -mx-8 -mt-8 lg:-mx-12 lg:-mt-8 px-8 lg:px-12 bg-background border-b border-border">
+        <div className="flex items-center justify-between pt-5 pb-3">
           <h1 className="font-serif text-xl font-semibold tracking-tight">{site.name}</h1>
           <a
             href={`https://${site.subdomain}.inkpop.net`}
