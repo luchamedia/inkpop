@@ -91,11 +91,11 @@ export function SourceCard({ source, onDelete, actions, reason }: SourceCardProp
     source.meta_title || source.label || hostnameOf(source.url)
 
   return (
-    <Card className="border border-border h-full overflow-hidden">
+    <Card className="border border-border flex flex-col overflow-hidden">
       {/* OG Image */}
       <OgImage source={source} />
 
-      <CardContent className="p-4 flex flex-col h-full">
+      <CardContent className="p-4 flex flex-col flex-1">
         {/* Header: favicon + hostname + type badge + delete */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5 min-w-0">
