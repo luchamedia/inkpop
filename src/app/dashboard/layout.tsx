@@ -55,25 +55,30 @@ export default async function DashboardLayout({
     )
   }
 
-  // Grant monthly free credits if due (catches mid-month signups missed by cron)
-  if (isMonthlyGrantDue(dbUser.monthly_credits_granted_at)) {
-    if (dbUser.credit_balance < FREE_MONTHLY_CREDITS) {
-      const result = await grantMonthlyCredits(dbUser.id)
-      dbUser.credit_balance = result.balance
-    } else {
-      await supabase
-        .from("users")
-        .update({ monthly_credits_granted_at: new Date().toISOString() })
-        .eq("id", dbUser.id)
+  // Run credit grant check and sites fetch in parallel (both depend only on dbUser.id)
+  const creditGrantPromise = (async () => {
+    if (isMonthlyGrantDue(dbUser.monthly_credits_granted_at)) {
+      if (dbUser.credit_balance < FREE_MONTHLY_CREDITS) {
+        const result = await grantMonthlyCredits(dbUser.id)
+        return result.balance
+      } else {
+        await supabase
+          .from("users")
+          .update({ monthly_credits_granted_at: new Date().toISOString() })
+          .eq("id", dbUser.id)
+      }
     }
-  }
+    return null
+  })()
 
-  // Fetch sites for sidebar tree
-  const { data: sites } = await supabase
+  const sitesPromise = supabase
     .from("sites")
     .select("id, name, subdomain")
     .eq("user_id", dbUser.id)
     .order("created_at", { ascending: true })
+
+  const [grantedBalance, { data: sites }] = await Promise.all([creditGrantPromise, sitesPromise])
+  if (grantedBalance !== null) dbUser.credit_balance = grantedBalance
 
   return (
     <SidebarProvider>

@@ -1,15 +1,19 @@
 "use client"
 
+import { lazy, Suspense, useCallback } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, Loader2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TabOverview } from "./tab-overview"
-import { TabPosts } from "./tab-posts"
-import { TabContext } from "./tab-context"
-import { TabSources } from "./tab-sources"
-import { TabSettings } from "./tab-settings"
-import { TabPromotions } from "./tab-promotions"
-import { TabAnalytics } from "./tab-analytics"
+
+// Lazy-load non-default tabs to reduce initial bundle size
+const TabPosts = lazy(() => import("./tab-posts").then((m) => ({ default: m.TabPosts })))
+const TabContext = lazy(() => import("./tab-context").then((m) => ({ default: m.TabContext })))
+const TabSources = lazy(() => import("./tab-sources").then((m) => ({ default: m.TabSources })))
+const TabSettings = lazy(() => import("./tab-settings").then((m) => ({ default: m.TabSettings })))
+const TabMonetization = lazy(() => import("./tab-monetization").then((m) => ({ default: m.TabMonetization })))
+const TabAnalytics = lazy(() => import("./tab-analytics").then((m) => ({ default: m.TabAnalytics })))
+const TabStyles = lazy(() => import("./tab-styles").then((m) => ({ default: m.TabStyles })))
 
 export interface SiteData {
   id: string
@@ -34,13 +38,17 @@ export interface SourceData {
   type: string
   url: string
   label: string | null
+  meta_title: string | null
+  meta_description: string | null
+  favicon_url: string | null
+  og_image_url: string | null
 }
 
 export interface PostData {
   id: string
   title: string
   slug: string
-  body: string
+  body?: string
   meta_description: string | null
   status: string
   generated_at: string
@@ -59,14 +67,23 @@ interface SiteDashboardProps {
 const TABS = [
   { value: "overview", label: "Overview" },
   { value: "posts", label: "Posts" },
-  { value: "context", label: "Context" },
   { value: "sources", label: "Sources" },
-  { value: "settings", label: "Settings" },
-  { value: "promotions", label: "Promotions" },
+  { value: "context", label: "Context" },
+  { value: "styles", label: "Styles" },
   { value: "analytics", label: "Analytics" },
+  { value: "monetization", label: "Monetization" },
+  { value: "settings", label: "Settings" },
 ] as const
 
 type TabValue = (typeof TABS)[number]["value"]
+
+function TabLoading() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  )
+}
 
 export function SiteDashboard({ site, drafts, published, creditBalance, hasPaymentMethod }: SiteDashboardProps) {
   const searchParams = useSearchParams()
@@ -74,7 +91,7 @@ export function SiteDashboard({ site, drafts, published, creditBalance, hasPayme
   const pathname = usePathname()
   const currentTab = (searchParams?.get("tab") as TabValue) || "overview"
 
-  function handleTabChange(value: string) {
+  const handleTabChange = useCallback((value: string) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "")
     if (value === "overview") {
       params.delete("tab")
@@ -83,7 +100,7 @@ export function SiteDashboard({ site, drafts, published, creditBalance, hasPayme
     }
     const query = params.toString()
     router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false })
-  }
+  }, [searchParams, router, pathname])
 
   return (
     <div>
@@ -125,32 +142,50 @@ export function SiteDashboard({ site, drafts, published, creditBalance, hasPayme
       </TabsContent>
 
       <TabsContent value="posts">
-        <TabPosts
-          site={site}
-          drafts={drafts}
-          published={published}
-          creditBalance={creditBalance}
-        />
+        <Suspense fallback={<TabLoading />}>
+          <TabPosts
+            site={site}
+            drafts={drafts}
+            published={published}
+            creditBalance={creditBalance}
+          />
+        </Suspense>
       </TabsContent>
 
       <TabsContent value="context">
-        <TabContext site={site} />
+        <Suspense fallback={<TabLoading />}>
+          <TabContext site={site} />
+        </Suspense>
       </TabsContent>
 
       <TabsContent value="sources">
-        <TabSources site={site} />
+        <Suspense fallback={<TabLoading />}>
+          <TabSources site={site} />
+        </Suspense>
       </TabsContent>
 
       <TabsContent value="settings">
-        <TabSettings site={site} />
+        <Suspense fallback={<TabLoading />}>
+          <TabSettings site={site} />
+        </Suspense>
       </TabsContent>
 
-      <TabsContent value="promotions">
-        <TabPromotions />
+      <TabsContent value="monetization">
+        <Suspense fallback={<TabLoading />}>
+          <TabMonetization />
+        </Suspense>
+      </TabsContent>
+
+      <TabsContent value="styles">
+        <Suspense fallback={<TabLoading />}>
+          <TabStyles />
+        </Suspense>
       </TabsContent>
 
       <TabsContent value="analytics">
-        <TabAnalytics />
+        <Suspense fallback={<TabLoading />}>
+          <TabAnalytics />
+        </Suspense>
       </TabsContent>
     </Tabs>
     </div>

@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RunAgentButton } from "@/components/agent/run-agent-button"
 import { useToast } from "@/hooks/use-toast"
+import { patchSite } from "@/lib/client-helpers"
 import type { SiteData, PostData } from "./site-dashboard"
 
 interface SetupProgressProps {
@@ -59,11 +60,7 @@ export function SetupProgress({
   async function handleConfirmSchedule() {
     setConfirmingSchedule(true)
     try {
-      const res = await fetch(`/api/sites/${site.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schedule_confirmed: true }),
-      })
+      const res = await patchSite(site.id, { schedule_confirmed: true })
       if (res.ok) {
         toast({ title: "Schedule confirmed" })
         router.refresh()

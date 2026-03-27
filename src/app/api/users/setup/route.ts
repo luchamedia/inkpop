@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 
 export async function PATCH(req: Request) {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     const { name } = await req.json()
 
     if (!name || typeof name !== "string") {
@@ -23,7 +22,5 @@ export async function PATCH(req: Request) {
       .eq("id", user.id)
 
     return NextResponse.json({ success: true })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

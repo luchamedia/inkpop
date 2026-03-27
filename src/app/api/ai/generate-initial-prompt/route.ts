@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 import { MindStudioAgent } from "@mindstudio-ai/agent"
 
@@ -8,8 +8,7 @@ export const maxDuration = 60
 const agent = new MindStudioAgent()
 
 export async function POST(req: Request) {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     const supabase = createServiceClient()
     const { siteId } = await req.json()
 
@@ -103,7 +102,5 @@ Return ONLY the prompt text, no JSON wrapper.`
       .eq("id", siteId)
 
     return NextResponse.json({ prompt })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

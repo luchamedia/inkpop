@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { suggestSiteNames } from "@/lib/mindstudio"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  try {
-    await getAuthUser()
+  return withAuth(async () => {
     const { topic, topicContext } = await req.json()
 
     if (!topic || typeof topic !== "string" || topic.length > 500) {
@@ -15,7 +14,5 @@ export async function POST(req: Request) {
 
     const names = await suggestSiteNames(topic, topicContext || [])
     return NextResponse.json({ names })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

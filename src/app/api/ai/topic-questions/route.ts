@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { generateTopicBrief, refineTopicBrief } from "@/lib/mindstudio"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  try {
-    await getAuthUser()
+  return withAuth(async () => {
     const body = await req.json()
 
     // Refine mode: update existing brief based on instruction
@@ -26,7 +25,5 @@ export async function POST(req: Request) {
 
     const brief = await generateTopicBrief(topic.trim())
     return NextResponse.json({ brief })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

@@ -29,7 +29,7 @@ export const CREDIT_PACKS = {
 
 export type PackId = keyof typeof CREDIT_PACKS
 
-export const SOURCE_LIMIT = 10
+export const SOURCE_LIMIT = 15
 export const FREE_MONTHLY_CREDITS = 5
 
 export function getPackByPriceId(

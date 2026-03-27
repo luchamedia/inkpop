@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 import { MindStudioAgent } from "@mindstudio-ai/agent"
 
@@ -26,8 +26,7 @@ interface PromptVersion {
 }
 
 export async function POST(req: Request) {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     const supabase = createServiceClient()
     const body: ChatRequest = await req.json()
 
@@ -171,7 +170,5 @@ Return ONLY the JSON object, no markdown code blocks.`
     }
 
     return NextResponse.json(response)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

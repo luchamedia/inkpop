@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 import { generatePostForTopic } from "@/lib/mindstudio"
 import { getBalance, deductCredits } from "@/lib/credits"
@@ -7,8 +7,7 @@ import { getBalance, deductCredits } from "@/lib/credits"
 export const maxDuration = 120
 
 export async function POST(req: Request) {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     const supabase = createServiceClient()
     const { siteId, topic } = await req.json()
 
@@ -62,8 +61,5 @@ export async function POST(req: Request) {
       .single()
 
     return NextResponse.json({ postId: inserted?.id, title: post.title })
-  } catch (error) {
-    console.error("Generate post error:", error)
-    return NextResponse.json({ error: "Failed to generate" }, { status: 500 })
-  }
+  })
 }

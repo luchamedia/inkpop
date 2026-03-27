@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 import { runGenerationWorkflow } from "@/lib/mindstudio"
 
@@ -11,9 +11,8 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { siteId } = await params
-    const user = await getAuthUser()
     const supabase = createServiceClient()
 
     // Verify site ownership and load site with sources
@@ -125,11 +124,5 @@ export async function POST(
       learningsExtracted: result.learningsExtracted,
       scansRemaining: MAX_SCANS_PER_DAY - scansToday - 1,
     })
-  } catch (error) {
-    console.error("Ideas scan error:", error)
-    return NextResponse.json(
-      { error: "Failed to scan sources" },
-      { status: 500 }
-    )
-  }
+  })
 }

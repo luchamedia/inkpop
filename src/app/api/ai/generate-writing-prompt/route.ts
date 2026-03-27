@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { generateWritingPrompt } from "@/lib/mindstudio"
 import type { WritingPromptInputs } from "@/lib/writing-prompt"
 
 export const maxDuration = 60
 
 export async function POST(req: Request) {
-  try {
-    await getAuthUser()
+  return withAuth(async () => {
     const inputs: WritingPromptInputs = await req.json()
 
     if (!inputs.companyName || typeof inputs.companyName !== "string") {
@@ -19,7 +18,5 @@ export async function POST(req: Request) {
 
     const prompt = await generateWritingPrompt(inputs)
     return NextResponse.json({ prompt })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

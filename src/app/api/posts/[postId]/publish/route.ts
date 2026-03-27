@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ postId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { postId } = await params
-    const user = await getAuthUser()
     const supabase = createServiceClient()
 
     // Verify ownership
@@ -37,7 +36,5 @@ export async function POST(
     }
 
     return NextResponse.json(updated)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { siteId } = await params
-    const user = await getAuthUser()
     const supabase = createServiceClient()
 
     const { data: site } = await supabase
@@ -23,18 +22,15 @@ export async function GET(
     }
 
     return NextResponse.json(site)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }
 
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { siteId } = await params
-    const user = await getAuthUser()
     const supabase = createServiceClient()
 
     // Verify ownership
@@ -59,18 +55,15 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { siteId } = await params
-    const user = await getAuthUser()
     const supabase = createServiceClient()
 
     // Verify ownership
@@ -138,7 +131,5 @@ export async function PATCH(
       .single()
 
     return NextResponse.json(updated)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

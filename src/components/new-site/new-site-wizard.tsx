@@ -1,18 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
+import { useSubdomainCheck } from "@/hooks/use-subdomain-check"
+import { useNameSuggestions } from "@/hooks/use-name-suggestions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Loader2, ArrowRight, Sparkles } from "lucide-react"
-
-const RESERVED_SUBDOMAINS = [
-  "www", "app", "api", "mail", "admin", "blog", "help", "support",
-]
 
 type Step = "topic" | "name"
 
@@ -29,57 +27,13 @@ export function NewSiteWizard() {
   // Name state
   const [name, setName] = useState("")
   const [subdomain, setSubdomain] = useState("")
-  const [available, setAvailable] = useState<boolean | null>(null)
-  const [checking, setChecking] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  // AI suggestions
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
-
-  const subdomainTooShort = subdomain.length > 0 && subdomain.length < 3
-  const subdomainReserved = RESERVED_SUBDOMAINS.includes(subdomain)
-
-  // Fetch AI name suggestions when entering step 2
-  useEffect(() => {
-    if (step !== "name" || !topic.trim()) return
-    setLoadingSuggestions(true)
-    fetch("/api/ai/suggest-names", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: topic.trim() }),
-    })
-      .then((res) => res.json())
-      .then((data) => setSuggestions(data.names || []))
-      .catch(() => setSuggestions([]))
-      .finally(() => setLoadingSuggestions(false))
-  }, [step, topic])
-
-  // Debounced subdomain availability check
-  useEffect(() => {
-    if (!subdomain || subdomain.length < 3 || RESERVED_SUBDOMAINS.includes(subdomain)) {
-      setAvailable(null)
-      return
-    }
-
-    const timer = setTimeout(async () => {
-      setChecking(true)
-      try {
-        const res = await fetch("/api/sites", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ checkSubdomain: true, subdomain }),
-        })
-        const data = await res.json()
-        setAvailable(data.available)
-      } catch {
-        setAvailable(null)
-      }
-      setChecking(false)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [subdomain])
+  const { available, checking, subdomainTooShort, subdomainReserved } = useSubdomainCheck(subdomain)
+  const { suggestions, loading: loadingSuggestions } = useNameSuggestions({
+    topic,
+    enabled: step === "name",
+  })
 
   function handleNameChange(value: string) {
     setName(value)

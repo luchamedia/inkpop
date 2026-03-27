@@ -31,19 +31,24 @@ export default async function SiteDetailPage({
 
   if (!site) redirect("/dashboard/sites")
 
-  const { data: drafts } = await supabase
-    .from("posts")
-    .select("*")
-    .eq("site_id", site.id)
-    .eq("status", "draft")
-    .order("created_at", { ascending: false })
+  const postColumns = "id, title, slug, meta_description, status, generated_at, published_at, created_at"
 
-  const { data: published } = await supabase
-    .from("posts")
-    .select("*")
-    .eq("site_id", site.id)
-    .eq("status", "published")
-    .order("published_at", { ascending: false })
+  const [{ data: drafts }, { data: published }] = await Promise.all([
+    supabase
+      .from("posts")
+      .select(postColumns)
+      .eq("site_id", site.id)
+      .eq("status", "draft")
+      .order("created_at", { ascending: false })
+      .range(0, 49),
+    supabase
+      .from("posts")
+      .select(postColumns)
+      .eq("site_id", site.id)
+      .eq("status", "published")
+      .order("published_at", { ascending: false })
+      .range(0, 49),
+  ])
 
   return (
     <SiteDashboard

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-inkpop is a multi-tenant SaaS that auto-generates SEO blog posts using MindStudio AI. Users sign up free via Clerk, buy post credits via Stripe (usage-based), configure data sources (URLs to scrape), and get a hosted subdomain blog at `*.inkpop.net`. Unlimited sites, up to 10 sources per site.
+inkpop is a multi-tenant SaaS that auto-generates SEO blog posts using MindStudio AI. Users sign up free via Clerk, buy post credits via Stripe (usage-based), configure data sources (URLs to scrape), and get a hosted subdomain blog at `*.inkpop.net`. Unlimited sites, up to 15 sources per site.
 
 **Live:** https://inkpop.net | **Repo:** github.com/luchamedia/inkpop
 
@@ -71,12 +71,12 @@ Uses the `@mindstudio-ai/agent` SDK directly (no remote agent, no polling):
 **Legacy functions (still used for manual generation):**
 - `generatePosts(sources, siteContext?)` — scrape all → generate → return `GeneratedPost[]`
 - `generatePostForTopic(topic, sources, siteContext?)` — generates a single post on a specific topic
-- `suggestSources(query)` — AI-powered source discovery (Google+Perplexity search → ranking → scrape validation)
+- `suggestSources(keywords, existingUrls, page, siteContext?)` — AI-powered source discovery: generates SEO/AEO-optimized search queries from site context → 3 parallel searches (Google+Perplexity) → dedup → AI ranking → returns `SuggestedSource[]`
 
 ### Component Patterns
 - **Server components** for data fetching (dashboard pages query Supabase directly)
 - **Client components** (`"use client"`) for interactivity (onboarding wizard, post editor)
-- New site wizard (`src/components/new-site/new-site-wizard.tsx`): 4-step flow — `StepTopic` (AI topic brief) → `StepSources` (AI suggestions) → `StepSchedule` → `StepName` (AI name suggestions)
+- New site wizard (`src/components/new-site/new-site-wizard.tsx`): 2-step flow — `StepTopic` (AI topic brief with follow-up questions) → `StepName` (AI-suggested names + subdomain). Sources are managed post-creation in the dashboard Sources tab.
 - Setup progress (`src/components/site-dashboard/setup-progress.tsx`): auto-dismissing onboarding cards on site overview — tracks sources, prompt, schedule, payments, first post, first publish
 - `RunAgentButton` (`src/components/agent/run-agent-button.tsx`): checks `creditBalance` prop — shows "Buy Credits" if 0, otherwise triggers generation via POST to `/api/agent/run`
 - Subdomain availability: debounced (500ms) POST to `/api/sites` with `checkSubdomain: true`
@@ -91,14 +91,14 @@ Usage-based billing via pre-purchased credit packs (10/$5, 50/$22.50, 100/$40). 
 - `FREE_MONTHLY_CREDITS = 5` — monthly free tier (use it or lose it, no stacking)
 - `isMonthlyGrantDue(grantedAt)` — checks if grant is due (different calendar month)
 - `grantMonthlyCredits(userId)` — atomic `GREATEST(balance, 5)` via `set_free_credit_floor` RPC + transaction log
-- `SOURCE_LIMIT = 10` — max sources per site
+- `SOURCE_LIMIT = 15` — max sources per site
 - Checkout uses `setup_future_usage: "off_session"` to save payment methods for auto-renew
 
 ### Key Flows
 - **Account setup:** Post-signup, if `users.name` is null → `/dashboard/setup` collects display name → redirects to `/new-site`. PATCH `/api/users/setup` saves the name.
 - **Dashboard routing:** `/dashboard` → no name? `/dashboard/setup` → no sites? `/new-site` → has sites? `/dashboard/sites`
-- **New site wizard:** `/new-site` — 4-step flow (topic brief with AI chat → sources with AI suggestions → schedule config → AI-suggested names). Components in `src/components/new-site/`.
-- **Source suggestions:** POST `/api/ai/suggest-sources` → `suggestSources()` searches Google+Perplexity → AI ranks and classifies → scrapes top candidates for topical validation → returns `SuggestedSource[]` with confidence scores. Available in onboarding and dashboard sources page.
+- **New site wizard:** `/new-site` — 2-step flow (topic brief with AI chat → AI-suggested names + subdomain). Sources are added post-creation via the dashboard Sources tab. Components in `src/components/new-site/`.
+- **Source suggestions:** Persisted in `source_suggestions` table. Auto-generated on site creation (fire-and-forget). Manual refresh via POST `/api/sites/[siteId]/suggestions`. Uses SEO/AEO-optimized AI query generation → 3 parallel searches → AI ranking → persisted with 14-day expiry. GET/PATCH/POST endpoints at `/api/sites/[siteId]/suggestions` for load/dismiss/refresh. Legacy endpoint POST `/api/ai/suggest-sources` still works (accepts optional `siteId` for context).
 - **Buy credits:** POST `/api/checkout` with `{ pack }` → Stripe Checkout (one-time payment, saves card via `setup_future_usage`) → webhook adds credits
 - **Auto-renew:** Users opt in via `/dashboard/billing` toggle + pack selection. When credits hit 0, the system charges the saved card off-session via `autoRenewCredits()` in `src/lib/credits.ts`. Works in both manual agent runs and cron.
 - **Agent run:** POST `/api/agent/run` → checks credit balance (attempts auto-renew if enabled and balance is 0, 402 if still insufficient) → `generatePosts()` → deducts credits → inserts draft posts → returns `{ success, postsCreated, creditsUsed, creditsRemaining }`
@@ -115,11 +115,11 @@ Usage-based billing via pre-purchased credit packs (10/$5, 50/$22.50, 100/$40). 
 - Standalone: `/setup` (post-signup name collection), `/new-site` (site creation wizard) — auth-protected, no dashboard layout
 - Dashboard: `/dashboard/**` (auth-protected, includes `/dashboard/billing`, `/dashboard/top-up`)
 - Blog: `/blog/[subdomain]/**` (public, served via subdomain rewrite)
-- API: `/api/checkout`, `/api/webhooks/stripe`, `/api/agent/run`, `/api/ai/suggest-sources`, `/api/ai/topic-questions`, `/api/ai/scan-company`, `/api/ai/suggest-names`, `/api/ai/generate-post-for-topic`, `/api/billing/auto-renew`, `/api/users/setup`, `/api/posts/**`, `/api/sites/**`, `/api/sites/[siteId]/ideas`, `/api/sites/[siteId]/ideas/[ideaId]/generate`, `/api/cron/daily-run`, `/api/cron/monthly-credits`
+- API: `/api/checkout`, `/api/webhooks/stripe`, `/api/agent/run`, `/api/ai/suggest-sources`, `/api/ai/topic-questions`, `/api/ai/scan-company`, `/api/ai/suggest-names`, `/api/ai/generate-post-for-topic`, `/api/billing/auto-renew`, `/api/users/setup`, `/api/posts/**`, `/api/sites/**`, `/api/sites/[siteId]/ideas`, `/api/sites/[siteId]/ideas/[ideaId]/generate`, `/api/sites/[siteId]/suggestions`, `/api/cron/daily-run`, `/api/cron/monthly-credits`
 
 ## Database
 
-9 tables, created manually in Supabase SQL Editor. No RLS — ownership enforced in application code.
+10 tables, created manually in Supabase SQL Editor. No RLS — ownership enforced in application code.
 
 ```sql
 CREATE TABLE users (
@@ -226,6 +226,19 @@ CREATE TABLE credit_transactions (
   type text NOT NULL,
   reference_id text,
   site_id uuid REFERENCES sites(id) ON DELETE SET NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE source_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
+  type text NOT NULL,
+  url text NOT NULL,
+  label text NOT NULL,
+  reason text,
+  status text DEFAULT 'active',    -- active | dismissed | accepted
+  search_query text,
+  expires_at timestamptz NOT NULL,
   created_at timestamptz DEFAULT now()
 );
 ```

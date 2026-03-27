@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { scanCompanyWebsite } from "@/lib/mindstudio"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  try {
-    await getAuthUser()
+  return withAuth(async () => {
     const { url } = await req.json()
 
     if (!url || typeof url !== "string") {
@@ -43,7 +42,5 @@ export async function POST(req: Request) {
 
     const result = await scanCompanyWebsite(url)
     return NextResponse.json(result)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

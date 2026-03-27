@@ -101,3 +101,38 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Tiptap rich text editor */
+.prompt-editor-content .tiptap {
+  @apply prose prose-sm max-w-none p-5 min-h-[500px] outline-none;
+  @apply prose-headings:font-semibold prose-headings:text-foreground;
+  @apply prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-2;
+  @apply prose-h3:text-base prose-h3:mt-4 prose-h3:mb-1.5;
+  @apply prose-p:text-[13px] prose-p:leading-[1.7] prose-p:my-1.5;
+  @apply prose-li:text-[13px] prose-li:leading-[1.7];
+  @apply prose-strong:font-semibold;
+  @apply prose-ul:my-1.5 prose-ol:my-1.5;
+}
+
+.prompt-editor-content .tiptap p.is-editor-empty:first-child::before {
+  @apply text-muted-foreground pointer-events-none float-left h-0;
+  content: attr(data-placeholder);
+}
+
+/* Diff highlighting — GitHub-style inline diff */
+.prompt-diff-view .diff-added {
+  @apply bg-emerald-100 text-emerald-900;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.prompt-diff-view .diff-removed {
+  @apply bg-red-100 text-red-900 line-through;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.dark .prompt-diff-view .diff-added {
+  @apply bg-emerald-900/40 text-emerald-300;
+}
+.dark .prompt-diff-view .diff-removed {
+  @apply bg-red-900/40 text-red-300;
+}
