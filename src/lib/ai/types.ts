@@ -88,3 +88,20 @@ export interface RssFeedItem {
   description: string
   pubDate: string | null
 }
+
+export interface SuggestedSourceRow {
+  id: string
+  site_id: string
+  type: string
+  url: string
+  label: string
+  reason: string | null
+  status: "active" | "dismissed" | "accepted"
+  search_query: string | null
+  meta_title: string | null
+  meta_description: string | null
+  favicon_url: string | null
+  og_image_url: string | null
+  expires_at: string
+  created_at: string
+}

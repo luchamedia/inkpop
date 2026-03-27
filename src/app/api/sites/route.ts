@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
+import { generateAndPersistSuggestions } from "@/lib/ai/suggestions"
 
 export async function GET() {
   return withAuth(async (user) => {
@@ -50,6 +51,17 @@ export async function POST(req: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    // Fire-and-forget: generate initial source suggestions if site has a topic
+    if (site.topic) {
+      generateAndPersistSuggestions(site.id, {
+        id: site.id,
+        topic: site.topic,
+        description: site.description,
+        category: site.category,
+        topic_context: site.topic_context,
+      }).catch((err) => console.error("Initial suggestion generation failed:", err))
     }
 
     return NextResponse.json(site)

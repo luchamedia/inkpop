@@ -3,6 +3,7 @@
 
 export type {
   SuggestedSource,
+  SuggestedSourceRow,
   SearchResult,
   TopicBrief,
   CompanyScanResult,
@@ -44,3 +45,7 @@ export {
 export {
   runGenerationWorkflow,
 } from "./workflow"
+
+export {
+  generateAndPersistSuggestions,
+} from "./suggestions"

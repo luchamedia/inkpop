@@ -38,6 +38,10 @@ export interface SourceData {
   type: string
   url: string
   label: string | null
+  meta_title: string | null
+  meta_description: string | null
+  favicon_url: string | null
+  og_image_url: string | null
 }
 
 export interface PostData {
