@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 
 export async function GET() {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     const supabase = createServiceClient()
 
     const { data: sites } = await supabase
@@ -14,14 +13,11 @@ export async function GET() {
       .order("created_at", { ascending: false })
 
     return NextResponse.json(sites || [])
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }
 
 export async function POST(req: Request) {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     const supabase = createServiceClient()
     const body = await req.json()
 
@@ -57,7 +53,5 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(site)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

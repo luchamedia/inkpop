@@ -42,12 +42,6 @@ export function SourceManager({ siteId, initialSources, topic: _topic }: SourceM
     setSources(initialSources)
   }, [initialSources])
 
-  async function fetchSources() {
-    const res = await fetch(`/api/sites/${siteId}/sources`)
-    const data = await res.json()
-    if (Array.isArray(data)) setSources(data)
-  }
-
   async function addSource() {
     if (!type || !url) return
     setLoading(true)
@@ -57,9 +51,10 @@ export function SourceManager({ siteId, initialSources, topic: _topic }: SourceM
       body: JSON.stringify({ type, url }),
     })
     if (res.ok) {
+      const newSource = await res.json()
+      setSources((prev) => [...prev, newSource])
       setType("")
       setUrl("")
-      await fetchSources()
       toast({ title: "Source added" })
     } else {
       const data = await res.json()
@@ -69,11 +64,19 @@ export function SourceManager({ siteId, initialSources, topic: _topic }: SourceM
   }
 
   async function removeSource(sourceId: string) {
-    await fetch(`/api/sites/${siteId}/sources?sourceId=${sourceId}`, {
+    // Optimistic: remove from UI immediately
+    const previous = sources
+    setSources((prev) => prev.filter((s) => s.id !== sourceId))
+    toast({ title: "Source removed" })
+
+    const res = await fetch(`/api/sites/${siteId}/sources?sourceId=${sourceId}`, {
       method: "DELETE",
     })
-    await fetchSources()
-    toast({ title: "Source removed" })
+    if (!res.ok) {
+      // Revert on failure
+      setSources(previous)
+      toast({ title: "Error", description: "Failed to remove source", variant: "destructive" })
+    }
   }
 
   return (
@@ -96,7 +99,8 @@ export function SourceManager({ siteId, initialSources, topic: _topic }: SourceM
                 }),
               })
               if (res.ok) {
-                await fetchSources()
+                const newSource = await res.json()
+                setSources((prev) => [...prev, newSource])
                 toast({ title: "Source added" })
               } else {
                 const data = await res.json()

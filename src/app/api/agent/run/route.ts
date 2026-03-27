@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 import { generatePosts } from "@/lib/mindstudio"
 import { getBalance, deductCredits, autoRenewCredits, type PackId } from "@/lib/credits"
@@ -7,8 +7,7 @@ import { getBalance, deductCredits, autoRenewCredits, type PackId } from "@/lib/
 export const maxDuration = 120
 
 export async function POST(req: Request) {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     const supabase = createServiceClient()
     const { siteId } = await req.json()
 
@@ -90,11 +89,5 @@ export async function POST(req: Request) {
       creditsUsed: posts.length,
       creditsRemaining: deduction.balance,
     })
-  } catch (error) {
-    console.error("Agent run error:", error)
-    return NextResponse.json(
-      { error: "Failed to generate content" },
-      { status: 500 }
-    )
-  }
+  })
 }

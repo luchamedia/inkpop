@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 
 async function verifyPostOwnership(postId: string, userId: string) {
@@ -18,9 +18,8 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ postId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { postId } = await params
-    const user = await getAuthUser()
     const post = await verifyPostOwnership(postId, user.id)
 
     if (!post) {
@@ -28,18 +27,15 @@ export async function GET(
     }
 
     return NextResponse.json(post)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ postId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { postId } = await params
-    const user = await getAuthUser()
     const post = await verifyPostOwnership(postId, user.id)
 
     if (!post) {
@@ -65,7 +61,5 @@ export async function PATCH(
     }
 
     return NextResponse.json(updated)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

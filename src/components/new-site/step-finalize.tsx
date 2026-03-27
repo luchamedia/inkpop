@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Sparkles, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FREE_MONTHLY_CREDITS } from "@/lib/credits"
+import { useSubdomainCheck } from "@/hooks/use-subdomain-check"
+import { useNameSuggestions } from "@/hooks/use-name-suggestions"
 
 type Schedule = "daily" | "weekly" | "biweekly"
 
@@ -24,17 +25,6 @@ interface StepFinalizeProps {
   onBack: () => void
   submitting: boolean
 }
-
-const RESERVED_SUBDOMAINS = [
-  "www",
-  "app",
-  "api",
-  "mail",
-  "admin",
-  "blog",
-  "help",
-  "support",
-]
 
 const scheduleOptions: { value: Schedule; label: string; recommended?: boolean }[] = [
   { value: "daily", label: "Daily" },
@@ -55,13 +45,8 @@ export function StepFinalize({
   onBack,
   submitting,
 }: StepFinalizeProps) {
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
-  const [available, setAvailable] = useState<boolean | null>(null)
-  const [checking, setChecking] = useState(false)
-
-  const subdomainTooShort = subdomain.length > 0 && subdomain.length < 3
-  const subdomainReserved = RESERVED_SUBDOMAINS.includes(subdomain)
+  const { suggestions, loading: loadingSuggestions } = useNameSuggestions({ topic, topicContext })
+  const { available, checking, subdomainTooShort, subdomainReserved } = useSubdomainCheck(subdomain)
 
   // Estimate posts per month
   const postsPerMonth =
@@ -75,51 +60,6 @@ export function StepFinalize({
     postsPerMonth > 0
       ? Math.floor(FREE_MONTHLY_CREDITS / postsPerMonth)
       : 0
-
-  // Fetch AI name suggestions on mount
-  useEffect(() => {
-    if (!topic) return
-    setLoadingSuggestions(true)
-    fetch("/api/ai/suggest-names", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, topicContext }),
-    })
-      .then((res) => res.json())
-      .then((data) => setSuggestions(data.names || []))
-      .catch(() => setSuggestions([]))
-      .finally(() => setLoadingSuggestions(false))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Debounced subdomain availability check
-  useEffect(() => {
-    if (
-      !subdomain ||
-      subdomain.length < 3 ||
-      RESERVED_SUBDOMAINS.includes(subdomain)
-    ) {
-      setAvailable(null)
-      return
-    }
-
-    const timer = setTimeout(async () => {
-      setChecking(true)
-      try {
-        const res = await fetch("/api/sites", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ checkSubdomain: true, subdomain }),
-        })
-        const data = await res.json()
-        setAvailable(data.available)
-      } catch {
-        setAvailable(null)
-      }
-      setChecking(false)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [subdomain])
 
   function handleNameChange(value: string) {
     const slug = value

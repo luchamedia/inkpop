@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 
 async function verifySiteOwnership(siteId: string, userId: string) {
@@ -17,9 +17,8 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { siteId } = await params
-    const user = await getAuthUser()
     const site = await verifySiteOwnership(siteId, user.id)
     if (!site) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -31,25 +30,22 @@ export async function GET(
       .order("created_at", { ascending: true })
 
     return NextResponse.json(sources || [])
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { siteId } = await params
-    const user = await getAuthUser()
     const site = await verifySiteOwnership(siteId, user.id)
     if (!site) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     const supabase = createServiceClient()
     const body = await req.json()
 
-    // Check 5-source limit
+    // Check 10-source limit
     const { count } = await supabase
       .from("sources")
       .select("*", { count: "exact", head: true })
@@ -78,18 +74,15 @@ export async function POST(
     }
 
     return NextResponse.json(source)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }
 
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
-  try {
+  return withAuth(async (user) => {
     const { siteId } = await params
-    const user = await getAuthUser()
     const site = await verifySiteOwnership(siteId, user.id)
     if (!site) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -108,7 +101,5 @@ export async function DELETE(
       .eq("site_id", siteId)
 
     return NextResponse.json({ success: true })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }

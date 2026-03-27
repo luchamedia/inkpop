@@ -2,13 +2,13 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, AlertTriangle, Zap } from "lucide-react"
+import { Settings, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
+import { patchSite } from "@/lib/client-helpers"
 import { Loader2 } from "lucide-react"
 import { DeleteSiteButton } from "@/components/dashboard/delete-site-button"
 import type { SiteData } from "./site-dashboard"
@@ -22,44 +22,14 @@ export function TabSettings({ site }: TabSettingsProps) {
   const { toast } = useToast()
   const [name, setName] = useState(site.name)
   const [saving, setSaving] = useState(false)
-  const [autoPublish, setAutoPublish] = useState(site.auto_publish)
-  const [savingAutoPublish, setSavingAutoPublish] = useState(false)
 
   const hasChanges = name !== site.name
-
-  async function handleToggleAutoPublish(checked: boolean) {
-    setSavingAutoPublish(true)
-    setAutoPublish(checked)
-    try {
-      const res = await fetch(`/api/sites/${site.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ auto_publish: checked }),
-      })
-      if (res.ok) {
-        toast({ title: checked ? "Auto-publish enabled" : "Auto-publish disabled" })
-        router.refresh()
-      } else {
-        setAutoPublish(!checked) // revert on failure
-        toast({ title: "Error", description: "Failed to update setting", variant: "destructive" })
-      }
-    } catch {
-      setAutoPublish(!checked)
-      toast({ title: "Error", description: "Failed to update setting", variant: "destructive" })
-    } finally {
-      setSavingAutoPublish(false)
-    }
-  }
 
   async function handleSave() {
     if (!name.trim()) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/sites/${site.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim() }),
-      })
+      const res = await patchSite(site.id, { name: name.trim() })
       if (res.ok) {
         toast({ title: "Site name updated" })
         router.refresh()
@@ -106,28 +76,6 @@ export function TabSettings({ site }: TabSettingsProps) {
                 Save changes
               </Button>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border border-border">
-        <CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-serif text-sm font-medium">Auto-Publish</h3>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5 mr-4">
-              <p className="text-sm">Publish posts automatically</p>
-              <p className="text-xs text-muted-foreground">
-                When enabled, AI-generated posts will be published automatically without review.
-              </p>
-            </div>
-            <Switch
-              checked={autoPublish}
-              onCheckedChange={handleToggleAutoPublish}
-              disabled={savingAutoPublish}
-            />
           </div>
         </CardContent>
       </Card>

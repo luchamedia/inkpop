@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Pen, Check, X, Loader2, Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { patchSite } from "@/lib/client-helpers"
 
 interface WritingPromptCardProps {
   siteId: string
@@ -24,11 +25,7 @@ export function WritingPromptCard({ siteId, writingPrompt, writingPromptInputs: 
   async function handleSave() {
     setSaving(true)
     try {
-      const res = await fetch(`/api/sites/${siteId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ writing_prompt: prompt || null }),
-      })
+      const res = await patchSite(siteId, { writing_prompt: prompt || null })
 
       if (!res.ok) throw new Error("Failed to save")
 

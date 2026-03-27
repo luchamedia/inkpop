@@ -1,39 +1,19 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import {
-  Send,
-  Loader2,
-  Save,
-  Bot,
-  User,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-  Sparkles,
-  FileText,
-  MessageSquare,
-} from "lucide-react"
+import { Loader2, Save, Sparkles, FileText } from "lucide-react"
+import { patchSite } from "@/lib/client-helpers"
+import { ContextChat, type ChatMessage } from "./context-chat"
+import { ContextVersionHistory, type PromptVersion } from "./context-version-history"
 import type { SiteData } from "./site-dashboard"
 
 interface TabContextProps {
   site: SiteData
-}
-
-interface ChatMessage {
-  role: "user" | "assistant"
-  content: string
-}
-
-interface PromptVersion {
-  prompt: string
-  summary: string
-  created_at: string
 }
 
 export function TabContext({ site }: TabContextProps) {
@@ -50,12 +30,9 @@ export function TabContext({ site }: TabContextProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [chatLoading, setChatLoading] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // Version history
   const [versions, setVersions] = useState<PromptVersion[]>([])
-  const [showVersions, setShowVersions] = useState(false)
 
   // Load version history from context_files
   useEffect(() => {
@@ -78,14 +55,6 @@ export function TabContext({ site }: TabContextProps) {
       sendAnalysis()
     }
   }, [savedPrompt]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-scroll chat
-  useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    })
-  }, [messages, chatLoading])
 
   async function generateInitialPrompt() {
     setGenerating(true)
@@ -148,13 +117,9 @@ export function TabContext({ site }: TabContextProps) {
       }
       const updatedVersions = [...versions, newVersion].slice(-20)
 
-      const res = await fetch(`/api/sites/${site.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          writing_prompt: prompt,
-          context_files: { versions: updatedVersions },
-        }),
+      const res = await patchSite(site.id, {
+        writing_prompt: prompt,
+        context_files: { versions: updatedVersions },
       })
       if (!res.ok) throw new Error("Failed")
       setSavedPrompt(prompt)
@@ -213,23 +178,10 @@ export function TabContext({ site }: TabContextProps) {
         ])
       } finally {
         setChatLoading(false)
-        inputRef.current?.focus()
       }
     },
     [messages, prompt, site.id, router]
   )
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    sendMessage(input)
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage(input)
-    }
-  }
 
   function handleRevert(version: PromptVersion) {
     setPrompt(version.prompt)
@@ -309,127 +261,24 @@ export function TabContext({ site }: TabContextProps) {
             )}
 
             {/* Version history */}
-            {versions.length > 0 && (
-              <div className="border-t bg-muted/20">
-                <button
-                  type="button"
-                  onClick={() => setShowVersions(!showVersions)}
-                  className="flex items-center gap-1.5 w-full px-5 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  Version history ({versions.length})
-                  {showVersions ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
-                </button>
-                {showVersions && (
-                  <div className="px-3 pb-3 max-h-[160px] overflow-y-auto space-y-0.5">
-                    {[...versions].reverse().map((v, i) => (
-                      <div
-                        key={versions.length - 1 - i}
-                        className="group flex items-center justify-between text-xs py-1.5 px-2 rounded-md hover:bg-muted/60 transition-colors"
-                      >
-                        <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                          <span className="font-mono text-muted-foreground">v{versions.length - i}</span>
-                          <span className="truncate">{v.summary}</span>
-                          <span className="text-muted-foreground shrink-0 tabular-nums">
-                            {new Date(v.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {v.prompt !== prompt && (
-                          <button
-                            type="button"
-                            className="hidden group-hover:inline-flex items-center text-xs text-muted-foreground hover:text-foreground ml-2 shrink-0"
-                            onClick={() => handleRevert(v)}
-                          >
-                            Restore
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            <ContextVersionHistory
+              versions={versions}
+              currentPrompt={prompt}
+              onRevert={handleRevert}
+            />
           </div>
 
           {/* Right panel — Chat */}
-          <div className="flex flex-col min-h-[640px] border-t lg:border-t-0 lg:border-l bg-muted/20">
-            {/* Header */}
-            <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Prompt Editor</span>
-            </div>
-
-            {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-5">
-              {messages.length === 0 && !chatLoading && !savedPrompt && (
-                <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-                  <Bot className="h-8 w-8 opacity-40" />
-                  <p className="text-sm">Chat will start once your prompt is ready.</p>
-                </div>
-              )}
-              {messages.map((msg, i) => (
-                <div key={i} className={`flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                  <div
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                      msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-background border shadow-sm"
-                    }`}
-                  >
-                    {msg.role === "user" ? (
-                      <User className="h-3.5 w-3.5" />
-                    ) : (
-                      <Bot className="h-3.5 w-3.5" />
-                    )}
-                  </div>
-                  <div
-                    className={`flex-1 rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground ml-8"
-                        : "bg-background border shadow-sm mr-8"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                </div>
-              ))}
-              {chatLoading && (
-                <div className="flex items-start gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-background border shadow-sm">
-                    <Bot className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="rounded-xl px-3.5 py-2.5 bg-background border shadow-sm">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Thinking...
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Input */}
-            <form onSubmit={handleSubmit} className="p-3 border-t bg-background/60">
-              <div className="flex items-end gap-2">
-                <Textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask to improve your prompt..."
-                  rows={1}
-                  className="min-h-[40px] max-h-[100px] resize-none text-sm"
-                  disabled={chatLoading || !savedPrompt}
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="h-10 w-10 shrink-0"
-                  disabled={chatLoading || !input.trim() || !savedPrompt}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </form>
-          </div>
+          <ContextChat
+            siteId={site.id}
+            messages={messages}
+            chatLoading={chatLoading}
+            savedPrompt={savedPrompt}
+            currentPrompt={prompt}
+            input={input}
+            onInputChange={setInput}
+            onSendMessage={sendMessage}
+          />
         </div>
       </Card>
     </div>

@@ -1,24 +1,20 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 import { CREDIT_PACKS, type PackId } from "@/lib/credits"
 
 export async function GET() {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     return NextResponse.json({
       auto_renew: user.auto_renew ?? false,
       auto_renew_pack: user.auto_renew_pack ?? null,
       has_payment_method: !!user.stripe_customer_id,
     })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  })
 }
 
 export async function POST(req: Request) {
-  try {
-    const user = await getAuthUser()
+  return withAuth(async (user) => {
     const { enabled, pack } = (await req.json()) as {
       enabled: boolean
       pack?: string
@@ -49,11 +45,5 @@ export async function POST(req: Request) {
       auto_renew: enabled,
       auto_renew_pack: enabled ? pack : null,
     })
-  } catch (error) {
-    console.error("Auto-renew update error:", error)
-    return NextResponse.json(
-      { error: "Failed to update auto-renew settings" },
-      { status: 500 }
-    )
-  }
+  })
 }
