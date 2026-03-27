@@ -9,6 +9,8 @@ const isPublicRoute = createRouteMatcher([
   "/api/cron/daily-run",
   "/api/cron/monthly-credits",
   "/blog(.*)",
+  "/robots.txt",
+  "/sitemap.xml",
 ])
 
 export default clerkMiddleware(async (auth, req) => {
@@ -57,5 +59,7 @@ export default clerkMiddleware(async (auth, req) => {
 })
 
 export const config = {
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.svg).*)",
+  ],
 }
