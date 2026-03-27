@@ -69,7 +69,7 @@ export default async function BlogIndex({
       {posts.map((post) => (
         <article key={post.slug}>
           <Link
-            href={`/blog/${subdomain}/${post.slug}`}
+            href={`/${post.slug}`}
             className="group"
           >
             <h2 className="font-serif text-xl font-semibold transition-colors group-hover:text-ink-yellow-text">
