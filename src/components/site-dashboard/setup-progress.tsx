@@ -106,7 +106,7 @@ export function SetupProgress({
       cta: (
         <div className="flex items-center gap-2">
           <Button asChild size="sm" variant="ghost">
-            <Link href="?tab=settings">Change</Link>
+            <Link href="?tab=posts">Change</Link>
           </Button>
           <Button
             size="sm"
