@@ -10,11 +10,14 @@ const requiredServerVars = [
   "NEXT_PUBLIC_APP_URL",
 ] as const
 
-if (process.env.NEXT_PHASE !== "phase-production-build") {
+// Only validate on the server (not in browser, not during build)
+if (
+  typeof window === "undefined" &&
+  process.env.NEXT_PHASE !== "phase-production-build"
+) {
   const missing = requiredServerVars.filter((key) => !process.env[key])
 
   if (missing.length > 0) {
-    // Log details server-side only, throw generic message for clients
     console.error(`[env] Missing required environment variables: ${missing.join(", ")}`)
     throw new Error("Server configuration error. Please check environment variables.")
   }
