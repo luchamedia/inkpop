@@ -354,7 +354,7 @@ export function TabSources({ site }: TabSourcesProps) {
                       meta_title: suggestion.meta_title,
                       meta_description: suggestion.meta_description,
                       favicon_url: suggestion.favicon_url,
-                      og_image_url: suggestion.og_image_url,
+                      og_image_url: null,
                     }}
                     reason={suggestion.reason}
                     actions={
