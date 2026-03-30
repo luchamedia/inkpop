@@ -104,7 +104,7 @@ export function Sidebar({ creditBalance, sites }: SidebarProps) {
       <div className="flex flex-col min-w-[240px] h-full p-3">
         {/* Logo header */}
         <div className="flex items-center justify-between px-2 py-1.5 mb-4">
-          <Link href="/dashboard" className="text-base font-semibold tracking-tight">
+          <Link href="/dashboard" className="font-serif text-lg font-semibold tracking-tight">
             inkpop
           </Link>
           <button

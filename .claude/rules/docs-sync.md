@@ -22,7 +22,7 @@ When any major decision, architectural change, or significant feature is added/m
 | `README.md` | Tech stack, project structure tree, setup instructions, architecture diagram |
 | `.env.example` | Add/remove env var entries (never include actual values) |
 | `.claude/plans/SETUP.md` | Database schema, service setup steps |
-| `.claude/rules/*.md` | Security rules, git workflow, or this file if processes change |
+| `.claude/rules/*.md` | Security rules, git workflow, orchestration protocol, workflow templates, or this file if processes change |
 | `.claude/skills/*/SKILL.md` | Skill instructions if the patterns they describe have changed |
 | `MEMORY.md` | Key decisions, build fixes, flow changes (auto-memory) |
 | `vercel.json` | Cron schedules, rewrites, if deployment config changes |
