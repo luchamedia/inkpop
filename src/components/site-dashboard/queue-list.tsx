@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Loader2, X, RotateCcw, CheckCircle2, AlertCircle, Clock, Pen, ListOrdered } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -34,6 +35,7 @@ export function QueueList({ siteId, creditBalance, onQueueChange }: QueueListPro
   const [loading, setLoading] = useState(true)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const { toast } = useToast()
+  const router = useRouter()
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const prevCompletedRef = useRef<Set<string>>(new Set())
 
@@ -53,6 +55,9 @@ export function QueueList({ siteId, creditBalance, onQueueChange }: QueueListPro
             description: item.post_title || item.display_title,
           })
         }
+        if (newCompleted.length > 0) {
+          router.refresh()
+        }
         prevCompletedRef.current = new Set(
           data.filter((i) => i.status === "completed").map((i) => i.id)
         )
@@ -68,7 +73,7 @@ export function QueueList({ siteId, creditBalance, onQueueChange }: QueueListPro
     } finally {
       setLoading(false)
     }
-  }, [siteId, toast, onQueueChange])
+  }, [siteId, toast, onQueueChange, router])
 
   useEffect(() => {
     fetchQueue()
@@ -188,38 +193,49 @@ export function QueueList({ siteId, creditBalance, onQueueChange }: QueueListPro
   }
 
   const active = items.filter((i) => i.status === "queued" || i.status === "processing")
-  const finished = items.filter((i) => i.status === "completed" || i.status === "failed")
+  const failed = items.filter((i) => i.status === "failed")
+
+  if (active.length === 0 && failed.length === 0) {
+    return (
+      <div className="rounded bg-muted/50 py-8 px-4 flex flex-col items-center text-center">
+        <ListOrdered className="h-5 w-5 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground">
+          No items in the queue. Generate posts from the Ideas tab.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
-      {active.length > 0 && (
+      {failed.length > 0 && (
         <div className="grid gap-2">
-          {active.map((item) => (
+          {failed.map((item) => (
             <QueueItemRow
               key={item.id}
               item={item}
               siteId={siteId}
               cancellingId={cancellingId}
               onCancel={handleCancel}
+              onRetry={() => handleRetry(item)}
             />
           ))}
         </div>
       )}
 
-      {finished.length > 0 && (
+      {active.length > 0 && (
         <>
-          {active.length > 0 && (
-            <p className="text-xs text-muted-foreground pt-2">Recent</p>
+          {failed.length > 0 && (
+            <p className="text-xs text-muted-foreground pt-2">In progress</p>
           )}
           <div className="grid gap-2">
-            {finished.map((item) => (
+            {active.map((item) => (
               <QueueItemRow
                 key={item.id}
                 item={item}
                 siteId={siteId}
                 cancellingId={cancellingId}
                 onCancel={handleCancel}
-                onRetry={item.status === "failed" ? () => handleRetry(item) : undefined}
               />
             ))}
           </div>

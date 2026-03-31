@@ -53,12 +53,12 @@ $$ LANGUAGE sql;
 
 **Current select:**
 ```
-"id, clerk_id, email, subscription_status, credit_balance, auto_renew, auto_renew_pack, stripe_customer_id"
+"id, clerk_id, email, credit_balance, auto_renew, auto_renew_pack, stripe_customer_id"
 ```
 
 **New select:**
 ```
-"id, clerk_id, email, name, subscription_status, credit_balance, auto_renew, auto_renew_pack, stripe_customer_id, monthly_credits_granted_at"
+"id, clerk_id, email, name, credit_balance, auto_renew, auto_renew_pack, stripe_customer_id, monthly_credits_granted_at"
 ```
 
 ### 1.3 Update dashboard layout select

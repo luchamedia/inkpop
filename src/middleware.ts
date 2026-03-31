@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/cron/daily-run",
   "/api/cron/monthly-credits",
   "/api/cron/process-queue",
+  "/api/cron/cleanup",
   "/api/queue/process",
   "/blog(.*)",
   "/robots.txt",

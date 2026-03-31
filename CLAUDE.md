@@ -42,7 +42,7 @@ Single middleware handles both subdomain detection and Clerk auth:
 - All DB access in MVP goes through API routes with service role key. No RLS configured.
 
 ### Auth Pattern
-- `src/lib/auth.ts` → `getAuthUser()` calls Clerk `await auth()`, then queries Supabase for the DB user row (returns `id`, `clerk_id`, `email`, `subscription_status`, `credit_balance`)
+- `src/lib/auth.ts` → `getAuthUser()` calls Clerk `await auth()`, then queries Supabase for the DB user row (returns `id`, `clerk_id`, `email`, `credit_balance`)
 - All `params` and `searchParams` in pages/layouts/routes are `Promise` types and must be awaited
 - Every API route that accesses user-scoped resources calls `getAuthUser()` then verifies ownership (e.g., `site.user_id === dbUser.id`)
 - Nested resource ownership: posts are verified through `posts → sites → users` chain

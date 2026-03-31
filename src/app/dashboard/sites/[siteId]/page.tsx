@@ -31,7 +31,7 @@ export default async function SiteDetailPage({
 
   if (!site) redirect("/dashboard/sites")
 
-  const postColumns = "id, title, slug, meta_description, status, generated_at, published_at, created_at"
+  const postColumns = "id, title, slug, meta_description, status, generated_at, published_at"
 
   const [{ data: drafts }, { data: published }, { count: queueCount }] = await Promise.all([
     supabase
@@ -39,7 +39,7 @@ export default async function SiteDetailPage({
       .select(postColumns)
       .eq("site_id", site.id)
       .eq("status", "draft")
-      .order("created_at", { ascending: false })
+      .order("generated_at", { ascending: false })
       .range(0, 49),
     supabase
       .from("posts")

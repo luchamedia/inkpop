@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
 
@@ -13,7 +14,7 @@ export async function POST(
     // Verify ownership
     const { data: post } = await supabase
       .from("posts")
-      .select("*, sites!inner(user_id)")
+      .select("*, sites!inner(user_id, subdomain)")
       .eq("id", postId)
       .single()
 
@@ -33,6 +34,11 @@ export async function POST(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    // Revalidate blog cache so the post appears immediately
+    if (post.sites.subdomain) {
+      revalidatePath(`/blog/${post.sites.subdomain}`, "layout")
     }
 
     return NextResponse.json(updated)

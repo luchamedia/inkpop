@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { createServiceClient } from "@/lib/supabase/server"
 import { writeArticle, generatePostForTopic } from "@/lib/mindstudio"
 import { addCredits } from "@/lib/credits"
@@ -90,7 +91,7 @@ export async function POST(req: Request) {
     // Load site context (needed for all job types)
     const { data: site } = await supabase
       .from("sites")
-      .select("id, user_id, topic, description, topic_context, writing_prompt, context_files, auto_publish, sources(*)")
+      .select("id, user_id, topic, description, topic_context, writing_prompt, context_files, auto_publish, subdomain, sources(*)")
       .eq("id", siteId)
       .single()
 
@@ -113,6 +114,11 @@ export async function POST(req: Request) {
       postId = await processTopicJob(job, site, siteContext, autoPublish, supabase)
     }
 
+    // Revalidate blog cache so published posts appear immediately
+    if (autoPublish && postId && site.subdomain) {
+      revalidatePath(`/blog/${site.subdomain}`, "layout")
+    }
+
     // Mark job as completed
     await supabase
       .from("generation_queue")
@@ -124,7 +130,7 @@ export async function POST(req: Request) {
       .eq("id", job.id)
 
     // Self-chain: check for more queued items and trigger processing
-    await triggerNextJob(siteId)
+    await triggerNextJob(siteId, req.url)
 
     return NextResponse.json({ success: true, jobId: job.id, postId })
   } catch (err: unknown) {
@@ -143,7 +149,7 @@ export async function POST(req: Request) {
         .eq("id", job.id)
 
       // Self-chain to retry
-      await triggerNextJob(siteId)
+      await triggerNextJob(siteId, req.url)
     } else {
       // Final failure: mark failed and refund
       await supabase
@@ -283,8 +289,8 @@ async function processTopicJob(
   return newPost?.id ?? null
 }
 
-async function triggerNextJob(siteId: string) {
-  const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/queue/process`
+async function triggerNextJob(siteId: string, requestUrl: string) {
+  const processUrl = new URL("/api/queue/process", requestUrl).toString()
   try {
     fetch(processUrl, {
       method: "POST",

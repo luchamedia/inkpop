@@ -8,7 +8,7 @@ interface PostCardProps {
     meta_description: string | null
     status: string
     published_at: string | null
-    created_at: string
+    generated_at: string
   }
   siteId: string
 }
@@ -29,7 +29,7 @@ export function PostCard({ post, siteId }: PostCardProps) {
         <p className="mt-1 text-xs text-muted-foreground">
           {post.published_at
             ? `Published ${new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-            : `Draft \u00b7 ${new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+            : `Draft \u00b7 ${new Date(post.generated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
         </p>
       </div>
       <Badge variant={post.status === "published" ? "published" : "draft"} className="ml-3 shrink-0">

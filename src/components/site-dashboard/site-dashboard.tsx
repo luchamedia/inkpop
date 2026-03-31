@@ -53,7 +53,6 @@ export interface PostData {
   status: string
   generated_at: string
   published_at: string | null
-  created_at: string
 }
 
 interface SiteDashboardProps {

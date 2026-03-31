@@ -96,7 +96,7 @@ export default async function BlogPostPage({
     <article>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
       <header className="mb-10">
         <h1 className="font-serif text-3xl font-semibold leading-snug sm:text-4xl">

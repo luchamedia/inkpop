@@ -31,15 +31,15 @@ export async function POST(
       return NextResponse.json({ error: "No sources configured" }, { status: 400 })
     }
 
-    // Rate limit: count generation_runs for this site today
+    // Rate limit: count source_learnings created for this site today
     const todayStart = new Date()
     todayStart.setUTCHours(0, 0, 0, 0)
 
     const { count } = await supabase
-      .from("generation_runs")
+      .from("source_learnings")
       .select("id", { count: "exact", head: true })
       .eq("site_id", siteId)
-      .gte("started_at", todayStart.toISOString())
+      .gte("created_at", todayStart.toISOString())
 
     const scansToday = count ?? 0
     if (scansToday >= MAX_SCANS_PER_DAY) {
@@ -48,19 +48,6 @@ export async function POST(
         { status: 429 }
       )
     }
-
-    // Insert generation run record
-    const { data: run } = await supabase
-      .from("generation_runs")
-      .insert({
-        site_id: site.id,
-        user_id: user.id,
-        status: "running",
-      })
-      .select("id")
-      .single()
-
-    const runId = run?.id
 
     // Run workflow with skipWriting — ideation only, no credits consumed
     const result = await runGenerationWorkflow(
@@ -90,7 +77,6 @@ export async function POST(
     for (const idea of result.remainingIdeas) {
       await supabase.from("post_ideas").insert({
         site_id: site.id,
-        generation_run_id: runId,
         title: idea.title,
         angle: idea.angle,
         key_learnings: idea.keyLearnings,
@@ -99,23 +85,6 @@ export async function POST(
         slug: idea.slug || null,
         expires_at: expiresAt.toISOString(),
       })
-    }
-
-    // Finalize generation run
-    if (runId) {
-      await supabase
-        .from("generation_runs")
-        .update({
-          sources_scanned: result.scanned,
-          new_content_found: result.newContentFound,
-          learnings_extracted: result.learningsExtracted,
-          ideas_generated: result.ideasGenerated,
-          posts_generated: 0,
-          credit_deducted: false,
-          status: result.status === "skipped" ? "skipped" : "completed",
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", runId)
     }
 
     return NextResponse.json({

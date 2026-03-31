@@ -62,24 +62,16 @@ export async function addCredits(
 ): Promise<number> {
   const supabase = createServiceClient()
 
-  // Atomic increment
-  const { data } = await supabase.rpc("increment_credit_balance", {
+  // Atomic increment + transaction log in a single RPC call
+  const { data, error } = await supabase.rpc("add_credit_with_log", {
     user_id_input: userId,
-    amount: credits,
+    amount_input: credits,
+    reference_id_input: referenceId,
+    type_input: type,
   })
 
-  const newBalance = data ?? credits
-
-  // Log the transaction
-  await supabase.from("credit_transactions").insert({
-    user_id: userId,
-    amount: credits,
-    balance_after: newBalance,
-    type,
-    reference_id: referenceId,
-  })
-
-  return newBalance
+  if (error) throw new Error(`Failed to add credits: ${error.message}`)
+  return data as number
 }
 
 export async function deductCredits(
@@ -89,30 +81,21 @@ export async function deductCredits(
 ): Promise<{ success: boolean; balance: number }> {
   const supabase = createServiceClient()
 
-  // Atomic conditional deduction — prevents overdraw
-  const { data } = await supabase.rpc("deduct_credit_balance", {
+  // Atomic deduction + transaction log in a single RPC call
+  const { data } = await supabase.rpc("deduct_credit_with_log", {
     user_id_input: userId,
-    amount: postCount,
+    amount_input: postCount,
+    site_id_input: siteId,
+    type_input: "generation",
   })
 
-  // rpc returns null if the WHERE condition failed (insufficient balance)
+  // RPC returns null if insufficient balance
   if (data === null || data === undefined) {
     const balance = await getBalance(userId)
     return { success: false, balance }
   }
 
-  const newBalance = data as number
-
-  // Log the transaction
-  await supabase.from("credit_transactions").insert({
-    user_id: userId,
-    amount: -postCount,
-    balance_after: newBalance,
-    type: "generation",
-    site_id: siteId,
-  })
-
-  return { success: true, balance: newBalance }
+  return { success: true, balance: data as number }
 }
 
 export function isMonthlyGrantDue(grantedAt: string | null): boolean {
@@ -130,22 +113,14 @@ export async function grantMonthlyCredits(
 ): Promise<{ granted: boolean; balance: number }> {
   const supabase = createServiceClient()
 
-  const { data } = await supabase.rpc("set_free_credit_floor", {
+  // set_free_credit_floor now handles transaction logging atomically
+  const { data, error } = await supabase.rpc("set_free_credit_floor", {
     user_id_input: userId,
     floor_amount: FREE_MONTHLY_CREDITS,
   })
 
-  const newBalance = data ?? FREE_MONTHLY_CREDITS
-
-  await supabase.from("credit_transactions").insert({
-    user_id: userId,
-    amount: FREE_MONTHLY_CREDITS,
-    balance_after: newBalance,
-    type: "free_monthly",
-    reference_id: `monthly_${new Date().toISOString().slice(0, 7)}`,
-  })
-
-  return { granted: true, balance: newBalance }
+  if (error) return { granted: false, balance: 0 }
+  return { granted: true, balance: data as number }
 }
 
 export async function autoRenewCredits(

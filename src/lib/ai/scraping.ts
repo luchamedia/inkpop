@@ -201,21 +201,21 @@ export async function scanSourceForChanges(
 
   const contentHash = createHash("sha256").update(text).digest("hex")
 
-  const { data: lastSnapshot } = await supabase
-    .from("source_snapshots")
-    .select("content_hash")
-    .eq("source_id", source.id)
-    .order("scraped_at", { ascending: false })
-    .limit(1)
+  const { data: currentSource } = await supabase
+    .from("sources")
+    .select("last_content_hash")
+    .eq("id", source.id)
     .single()
 
-  const hasNewContent = !lastSnapshot || lastSnapshot.content_hash !== contentHash
+  const hasNewContent = !currentSource || currentSource.last_content_hash !== contentHash
 
-  await supabase.from("source_snapshots").insert({
-    source_id: source.id,
-    content_hash: contentHash,
-    content_preview: text.slice(0, 500),
-  })
+  await supabase
+    .from("sources")
+    .update({
+      last_content_hash: contentHash,
+      last_scraped_at: new Date().toISOString(),
+    })
+    .eq("id", source.id)
 
   return {
     sourceId: source.id,

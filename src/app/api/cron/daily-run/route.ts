@@ -30,19 +30,6 @@ export async function GET(req: NextRequest) {
     if (skippedUsers.has(site.user_id)) continue
 
     try {
-      // Insert generation run record
-      const { data: run } = await supabase
-        .from("generation_runs")
-        .insert({
-          site_id: site.id,
-          user_id: site.user_id,
-          status: "running",
-        })
-        .select("id")
-        .single()
-
-      const runId = run?.id
-
       // Run workflow with skipWriting — ideation only, no credits consumed
       const result = await runGenerationWorkflow(
         {
@@ -64,27 +51,8 @@ export async function GET(req: NextRequest) {
         { skipWriting: true }
       )
 
-      // Update generation run with scan/learning counts
-      if (runId) {
-        await supabase
-          .from("generation_runs")
-          .update({
-            sources_scanned: result.scanned,
-            new_content_found: result.newContentFound,
-            learnings_extracted: result.learningsExtracted,
-            ideas_generated: result.ideasGenerated,
-          })
-          .eq("id", runId)
-      }
-
-      // If skipped (no content, no learnings), mark and move on
+      // If skipped (no content, no learnings), move on
       if (result.status === "skipped") {
-        if (runId) {
-          await supabase
-            .from("generation_runs")
-            .update({ status: "skipped", completed_at: new Date().toISOString() })
-            .eq("id", runId)
-        }
         continue
       }
 
@@ -101,7 +69,6 @@ export async function GET(req: NextRequest) {
       for (const idea of toStore) {
         await supabase.from("post_ideas").insert({
           site_id: site.id,
-          generation_run_id: runId,
           title: idea.title,
           angle: idea.angle,
           key_learnings: idea.keyLearnings,
@@ -118,7 +85,6 @@ export async function GET(req: NextRequest) {
           .from("post_ideas")
           .insert({
             site_id: site.id,
-            generation_run_id: runId,
             title: idea.title,
             angle: idea.angle,
             key_learnings: idea.keyLearnings,
@@ -196,20 +162,8 @@ export async function GET(req: NextRequest) {
 
       ideasCreated += toStore.length
 
-      // Finalize the generation run
-      if (runId) {
-        await supabase
-          .from("generation_runs")
-          .update({
-            posts_generated: 0, // Posts will be created by queue processor
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", runId)
-      }
-
       // Trigger queue processing for this site
-      const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/queue/process`
+      const processUrl = new URL("/api/queue/process", req.url).toString()
       fetch(processUrl, {
         method: "POST",
         headers: {

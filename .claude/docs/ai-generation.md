@@ -4,7 +4,7 @@ Located in `src/lib/mindstudio.ts`. Uses the `@mindstudio-ai/agent` SDK directly
 
 ## Generation Workflow v2 (daily cron)
 
-1. `scanSourceForChanges(source, supabase)` — branches by source type: YouTube sources fetch channel videos + transcripts via `fetchYoutubeChannel`/`fetchYoutubeCaptions`, blog sources try RSS/Atom feed parsing first (with 48h lookback) then fall back to scraping, webpage sources use standard `scrapeUrl`. SHA-256 hashes content, compares to last `source_snapshots` row to detect new content
+1. `scanSourceForChanges(source, supabase)` — branches by source type: YouTube sources fetch channel videos + transcripts via `fetchYoutubeChannel`/`fetchYoutubeCaptions`, blog sources try RSS/Atom feed parsing first (with 48h lookback) then fall back to scraping, webpage sources use standard `scrapeUrl`. SHA-256 hashes content, compares to `sources.last_content_hash` to detect new content
 2. `extractLearnings(scrapedContent[], siteContext)` — extracts 3-8 key learnings per source (facts, trends, techniques) as structured JSON
 3. `ideateArticles(learnings, siteContext, existingTitles, count=20)` — generates ~20 article ideas based on accumulated learnings (last 30 days), avoiding duplicate topics
 4. `writeArticle(idea, learnings, siteContext)` — writes a full blog post from an idea, with Google web search for current facts
