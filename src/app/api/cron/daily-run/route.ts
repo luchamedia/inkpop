@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     .select("id, user_id, topic, description, topic_context, writing_prompt, context_files, posting_schedule, posts_per_period, auto_publish, sources(id, type, url), users!inner(id, credit_balance, auto_renew, auto_renew_pack, stripe_customer_id)")
     .or("credit_balance.gt.0,auto_renew.eq.true", { referencedTable: "users" })
 
-  let postsCreated = 0
+  let jobsQueued = 0
   let ideasCreated = 0
   const errors: string[] = []
   const skippedUsers = new Set<string>()
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
       const runId = run?.id
 
-      // Run the smart workflow
+      // Run workflow with skipWriting — ideation only, no credits consumed
       const result = await runGenerationWorkflow(
         {
           id: site.id,
@@ -60,7 +60,8 @@ export async function GET(req: NextRequest) {
             url: s.url,
           })),
         },
-        supabase
+        supabase,
+        { skipWriting: true }
       )
 
       // Update generation run with scan/learning counts
@@ -87,9 +88,52 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      // Deduct credits for posts actually written
-      if (result.postsWritten.length > 0) {
-        const deduction = await deductCredits(site.user_id, result.postsWritten.length, site.id)
+      // Store all ideas in post_ideas
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + 14)
+
+      const postsPerPeriod = site.posts_per_period ?? 1
+      const allIdeas = result.remainingIdeas // With skipWriting, all ideas are in remainingIdeas
+      const toWrite = allIdeas.slice(0, postsPerPeriod)
+      const toStore = allIdeas.slice(postsPerPeriod)
+
+      // Store remaining ideas (not selected for writing)
+      for (const idea of toStore) {
+        await supabase.from("post_ideas").insert({
+          site_id: site.id,
+          generation_run_id: runId,
+          title: idea.title,
+          angle: idea.angle,
+          key_learnings: idea.keyLearnings,
+          meta_description: idea.description || null,
+          keywords: idea.keywords || [],
+          slug: idea.slug || null,
+          expires_at: expiresAt.toISOString(),
+        })
+      }
+
+      // Insert ideas selected for writing, then create queue jobs for them
+      for (const idea of toWrite) {
+        const { data: ideaRow } = await supabase
+          .from("post_ideas")
+          .insert({
+            site_id: site.id,
+            generation_run_id: runId,
+            title: idea.title,
+            angle: idea.angle,
+            key_learnings: idea.keyLearnings,
+            meta_description: idea.description || null,
+            keywords: idea.keywords || [],
+            slug: idea.slug || null,
+            expires_at: expiresAt.toISOString(),
+          })
+          .select("id")
+          .single()
+
+        if (!ideaRow) continue
+
+        // Reserve credit for this queue job
+        const deduction = await deductCredits(site.user_id, 1, site.id)
         if (!deduction.success) {
           // Attempt auto-renew
           const userData = site.users as unknown as {
@@ -104,118 +148,76 @@ export async function GET(req: NextRequest) {
               userData.auto_renew_pack as PackId
             )
             if (renewal.success) {
-              const retry = await deductCredits(site.user_id, result.postsWritten.length, site.id)
+              const retry = await deductCredits(site.user_id, 1, site.id)
               if (!retry.success) {
                 skippedUsers.add(site.user_id)
-                if (runId) {
-                  await supabase
-                    .from("generation_runs")
-                    .update({ status: "failed", completed_at: new Date().toISOString() })
-                    .eq("id", runId)
-                }
-                continue
+                break
               }
             } else {
               skippedUsers.add(site.user_id)
-              if (runId) {
-                await supabase
-                  .from("generation_runs")
-                  .update({ status: "failed", completed_at: new Date().toISOString() })
-                  .eq("id", runId)
-              }
-              continue
+              break
             }
           } else {
             skippedUsers.add(site.user_id)
-            if (runId) {
-              await supabase
-                .from("generation_runs")
-                .update({ status: "failed", completed_at: new Date().toISOString() })
-                .eq("id", runId)
-            }
-            continue
+            break
           }
         }
 
-        if (runId) {
-          await supabase
-            .from("generation_runs")
-            .update({ credit_deducted: true })
-            .eq("id", runId)
-        }
-      }
+        // Calculate queue position
+        const { data: maxPos } = await supabase
+          .from("generation_queue")
+          .select("position")
+          .eq("site_id", site.id)
+          .in("status", ["queued", "processing"])
+          .order("position", { ascending: false })
+          .limit(1)
 
-      // Store remaining ideas (not written) in post_ideas
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + 14)
+        const position = (maxPos && maxPos.length > 0 ? maxPos[0].position : 0) + 1
 
-      for (const idea of result.remainingIdeas) {
-        await supabase.from("post_ideas").insert({
-          site_id: site.id,
-          generation_run_id: runId,
-          title: idea.title,
-          angle: idea.angle,
-          key_learnings: idea.keyLearnings,
-          meta_description: idea.description || null,
-          keywords: idea.keywords || [],
-          slug: idea.slug || null,
-          expires_at: expiresAt.toISOString(),
-        })
-      }
-
-      // Also store the written ideas as 'used'
-      const usedIdeaIds: string[] = []
-      for (const idea of result.writtenIdeas) {
-        const { data: ideaRow } = await supabase
+        // Mark idea as queued
+        await supabase
           .from("post_ideas")
-          .insert({
-            site_id: site.id,
-            generation_run_id: runId,
-            title: idea.title,
-            angle: idea.angle,
-            key_learnings: idea.keyLearnings,
-            meta_description: idea.description || null,
-            keywords: idea.keywords || [],
-            slug: idea.slug || null,
-            status: "used",
-            expires_at: expiresAt.toISOString(),
-          })
-          .select("id")
-          .single()
-        if (ideaRow) usedIdeaIds.push(ideaRow.id)
-      }
+          .update({ status: "queued" })
+          .eq("id", ideaRow.id)
 
-      // Insert written posts
-      const autoPublish = site.auto_publish === true
-      for (let i = 0; i < result.postsWritten.length; i++) {
-        const post = result.postsWritten[i]
-        await supabase.from("posts").insert({
+        // Insert queue job
+        await supabase.from("generation_queue").insert({
           site_id: site.id,
-          title: post.title,
-          slug: post.slug,
-          body: post.body,
-          meta_description: post.meta_description || null,
-          status: autoPublish ? "published" : "draft",
-          published_at: autoPublish ? new Date().toISOString() : null,
-          generation_run_id: runId,
-          idea_id: usedIdeaIds[i] || null,
+          user_id: site.user_id,
+          job_type: "scheduled",
+          idea_id: ideaRow.id,
+          status: "queued",
+          position,
+          credits_reserved: 1,
         })
+
+        jobsQueued++
       }
 
-      postsCreated += result.postsWritten.length
-      ideasCreated += result.remainingIdeas.length
+      ideasCreated += toStore.length
 
       // Finalize the generation run
       if (runId) {
         await supabase
           .from("generation_runs")
           .update({
-            posts_generated: result.postsWritten.length,
+            posts_generated: 0, // Posts will be created by queue processor
             status: "completed",
             completed_at: new Date().toISOString(),
           })
           .eq("id", runId)
       }
+
+      // Trigger queue processing for this site
+      const processUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/queue/process`
+      fetch(processUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.CRON_SECRET}`,
+        },
+        body: JSON.stringify({ siteId: site.id }),
+      }).catch(() => {})
     } catch (error) {
       console.error(`Cron failed for site ${site.id}:`, error)
       errors.push(site.id)
@@ -224,7 +226,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     processed: (sites || []).length,
-    postsCreated,
+    jobsQueued,
     ideasCreated,
     errors: errors.length,
   })

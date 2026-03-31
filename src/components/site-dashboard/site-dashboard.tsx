@@ -62,6 +62,7 @@ interface SiteDashboardProps {
   published: PostData[]
   creditBalance: number
   hasPaymentMethod: boolean
+  queueCount?: number
 }
 
 const TABS = [
@@ -85,7 +86,7 @@ function TabLoading() {
   )
 }
 
-export function SiteDashboard({ site, drafts, published, creditBalance, hasPaymentMethod }: SiteDashboardProps) {
+export function SiteDashboard({ site, drafts, published, creditBalance, hasPaymentMethod, queueCount = 0 }: SiteDashboardProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -145,6 +146,7 @@ export function SiteDashboard({ site, drafts, published, creditBalance, hasPayme
             drafts={drafts}
             published={published}
             creditBalance={creditBalance}
+            initialQueueCount={queueCount}
           />
         </Suspense>
       </TabsContent>

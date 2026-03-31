@@ -1,11 +1,13 @@
 "use client"
 
-import { FileText, Lightbulb } from "lucide-react"
+import { useState } from "react"
+import { FileText, Lightbulb, ListOrdered } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { PostCard } from "@/components/posts/post-card"
 import { PostScheduleCard } from "./post-schedule-card"
 import { IdeaList } from "./idea-list"
+import { QueueList } from "./queue-list"
 import type { SiteData, PostData } from "./site-dashboard"
 
 interface TabPostsProps {
@@ -13,9 +15,12 @@ interface TabPostsProps {
   drafts: PostData[]
   published: PostData[]
   creditBalance: number
+  initialQueueCount?: number
 }
 
-export function TabPosts({ site, drafts, published, creditBalance }: TabPostsProps) {
+export function TabPosts({ site, drafts, published, creditBalance, initialQueueCount = 0 }: TabPostsProps) {
+  const [queueCount, setQueueCount] = useState(initialQueueCount)
+
   return (
     <div className="mt-8 space-y-8">
       <PostScheduleCard site={site} />
@@ -33,6 +38,10 @@ export function TabPosts({ site, drafts, published, creditBalance }: TabPostsPro
                 <Lightbulb className="h-3 w-3 mr-1" />
                 Ideas
               </TabsTrigger>
+              <TabsTrigger value="queue">
+                <ListOrdered className="h-3 w-3 mr-1" />
+                Queue{queueCount > 0 ? ` (${queueCount})` : ""}
+              </TabsTrigger>
               <TabsTrigger value="drafts">
                 Drafts ({drafts.length})
               </TabsTrigger>
@@ -40,6 +49,18 @@ export function TabPosts({ site, drafts, published, creditBalance }: TabPostsPro
                 Published ({published.length})
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="ideas" className="mt-4">
+              <IdeaList siteId={site.id} creditBalance={creditBalance} />
+            </TabsContent>
+
+            <TabsContent value="queue" className="mt-4">
+              <QueueList
+                siteId={site.id}
+                creditBalance={creditBalance}
+                onQueueChange={setQueueCount}
+              />
+            </TabsContent>
 
             <TabsContent value="drafts" className="mt-4">
               {drafts.length === 0 ? (
@@ -69,10 +90,6 @@ export function TabPosts({ site, drafts, published, creditBalance }: TabPostsPro
                   ))}
                 </div>
               )}
-            </TabsContent>
-
-            <TabsContent value="ideas" className="mt-4">
-              <IdeaList siteId={site.id} creditBalance={creditBalance} />
             </TabsContent>
           </Tabs>
         </CardContent>

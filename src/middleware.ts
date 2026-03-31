@@ -8,6 +8,8 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks/stripe",
   "/api/cron/daily-run",
   "/api/cron/monthly-credits",
+  "/api/cron/process-queue",
+  "/api/queue/process",
   "/blog(.*)",
   "/robots.txt",
   "/sitemap.xml",

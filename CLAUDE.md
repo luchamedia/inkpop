@@ -57,220 +57,59 @@ Server component that:
 6. Renders sidebar (`src/components/dashboard/sidebar.tsx`) + content
 No subscription gate — all authenticated users access the dashboard freely.
 
-### AI Content Generation (`src/lib/mindstudio.ts`)
-Uses the `@mindstudio-ai/agent` SDK directly (no remote agent, no polling):
+## Detailed Documentation
 
-**Generation Workflow v2 (daily cron):**
-1. `scanSourceForChanges(source, supabase)` — branches by source type: YouTube sources fetch channel videos + transcripts via `fetchYoutubeChannel`/`fetchYoutubeCaptions`, blog sources try RSS/Atom feed parsing first (with 48h lookback) then fall back to scraping, webpage sources use standard `scrapeUrl`. SHA-256 hashes content, compares to last `source_snapshots` row to detect new content
-2. `extractLearnings(scrapedContent[], siteContext)` — extracts 3-8 key learnings per source (facts, trends, techniques) as structured JSON
-3. `ideateArticles(learnings, siteContext, existingTitles, count=20)` — generates ~20 article ideas based on accumulated learnings (last 30 days), avoiding duplicate topics
-4. `writeArticle(idea, learnings, siteContext)` — writes a full blog post from an idea, with Google web search for current facts
-5. `runGenerationWorkflow(site, supabase)` — orchestrates the full pipeline: scan → extract → ideate → write top N → return remaining ideas
-6. Ideas are stored in `post_ideas` with a 2-week shelf life. Users can generate posts from ideas on demand.
+These files contain detailed reference information. Read them on-demand when working on related features:
 
-**Legacy functions (still used for manual generation):**
-- `generatePosts(sources, siteContext?)` — scrape all → generate → return `GeneratedPost[]`
-- `generatePostForTopic(topic, sources, siteContext?)` — generates a single post on a specific topic
-- `suggestSources(keywords, existingUrls, page, siteContext?)` — AI-powered source discovery: generates SEO/AEO-optimized search queries from site context → 3 parallel searches (Google+Perplexity) → dedup → AI ranking → returns `SuggestedSource[]`
+| Topic | File | When to read |
+|-------|------|-------------|
+| Database schema & RPC functions | `.claude/docs/database.md` | Any DB work, migrations, queries |
+| Key flows (auth, billing, generation) | `.claude/docs/flows.md` | Understanding user journeys, debugging flows |
+| AI content generation pipeline | `.claude/docs/ai-generation.md` | Working on `src/lib/mindstudio.ts` or generation |
+| Generation queue system | `.claude/docs/queue.md` | Queue processing, job lifecycle |
+| Credit system | `.claude/docs/credits.md` | Billing, credits, Stripe integration |
+| Route structure | `.claude/docs/routes.md` | Adding routes, understanding URL structure |
+| Component patterns | `.claude/docs/components.md` | Building UI, understanding component conventions |
 
-### Component Patterns
-- **Server components** for data fetching (dashboard pages query Supabase directly)
-- **Client components** (`"use client"`) for interactivity (onboarding wizard, post editor)
-- New site wizard (`src/components/new-site/new-site-wizard.tsx`): 2-step flow — `StepTopic` (AI topic brief with follow-up questions) → `StepName` (AI-suggested names + subdomain). Sources are managed post-creation in the dashboard Sources tab.
-- Setup progress (`src/components/site-dashboard/setup-progress.tsx`): auto-dismissing onboarding cards on site overview — tracks sources, prompt, schedule, payments, first post, first publish
-- `RunAgentButton` (`src/components/agent/run-agent-button.tsx`): checks `creditBalance` prop — shows "Buy Credits" if 0, otherwise triggers generation via POST to `/api/agent/run`
-- Subdomain availability: debounced (500ms) POST to `/api/sites` with `checkSubdomain: true`
+## Subagent Usage
 
-### Credit System (`src/lib/credits.ts`)
-Usage-based billing via pre-purchased credit packs (10/$5, 50/$22.50, 100/$40). One credit = one blog post.
-- `CREDIT_PACKS` — pack config with Stripe price IDs and `priceInCents`
-- `getBalance(userId)` — read credit balance
-- `addCredits(userId, credits, referenceId, type?)` — atomic increment via Supabase RPC + transaction log (type defaults to `"purchase"`)
-- `deductCredits(userId, postCount, siteId)` — atomic conditional deduction (prevents overdraw) + transaction log
-- `autoRenewCredits(userId, stripeCustomerId, packId)` — charges saved card off-session, adds credits on success (type `"auto_renew"`)
-- `FREE_MONTHLY_CREDITS = 5` — monthly free tier (use it or lose it, no stacking)
-- `isMonthlyGrantDue(grantedAt)` — checks if grant is due (different calendar month)
-- `grantMonthlyCredits(userId)` — atomic `GREATEST(balance, 5)` via `set_free_credit_floor` RPC + transaction log
-- `SOURCE_LIMIT = 15` — max sources per site
-- Checkout uses `setup_future_usage: "off_session"` to save payment methods for auto-renew
+**You MUST use specialized subagents for all code tasks.** Act as an orchestrator — delegate, don't execute directly. See `.claude/rules/orchestration.md` for the full protocol.
 
-### Key Flows
-- **Account setup:** Post-signup, if `users.name` is null → `/dashboard/setup` collects display name → redirects to `/new-site`. PATCH `/api/users/setup` saves the name.
-- **Dashboard routing:** `/dashboard` → no name? `/dashboard/setup` → no sites? `/new-site` → has sites? `/dashboard/sites`
-- **New site wizard:** `/new-site` — 2-step flow (topic brief with AI chat → AI-suggested names + subdomain). Sources are added post-creation via the dashboard Sources tab. Components in `src/components/new-site/`.
-- **Source suggestions:** Persisted in `source_suggestions` table. Auto-generated on site creation (fire-and-forget). Manual refresh via POST `/api/sites/[siteId]/suggestions`. Uses SEO/AEO-optimized AI query generation → 3 parallel searches → AI ranking → persisted with 14-day expiry. GET/PATCH/POST endpoints at `/api/sites/[siteId]/suggestions` for load/dismiss/refresh. Legacy endpoint POST `/api/ai/suggest-sources` still works (accepts optional `siteId` for context).
-- **Buy credits:** POST `/api/checkout` with `{ pack }` → Stripe Checkout (one-time payment, saves card via `setup_future_usage`) → webhook adds credits
-- **Auto-renew:** Users opt in via `/dashboard/billing` toggle + pack selection. When credits hit 0, the system charges the saved card off-session via `autoRenewCredits()` in `src/lib/credits.ts`. Works in both manual agent runs and cron.
-- **Agent run:** POST `/api/agent/run` → checks credit balance (attempts auto-renew if enabled and balance is 0, 402 if still insufficient) → `generatePosts()` → deducts credits → inserts draft posts → returns `{ success, postsCreated, creditsUsed, creditsRemaining }`
-- **Publish:** POST `/api/posts/[postId]/publish` sets status=published, published_at=now
-- **Stripe webhook:** `checkout.session.completed` → reads metadata (pack, credits) → calls `addCredits()`. Uses `req.text()` for raw body (signature verification).
-- **Monthly free credits:** 5 credits/month, no stacking. Dual triggers: (1) cron at midnight UTC on 1st (`/api/cron/monthly-credits`), (2) login-check fallback in dashboard layout. New users get 5 credits immediately on signup.
-- **Cron (daily):** GET `/api/cron/daily-run` with `Authorization: Bearer CRON_SECRET` → for each site with credits/auto-renew: runs `runGenerationWorkflow()` (scan sources for new content → extract learnings → ideate ~20 ideas → write top N posts) → stores remaining ideas in `post_ideas` (2-week TTL) → if `auto_publish` is true, posts are published automatically; otherwise saved as drafts → deducts credits per post written
-- **Generate from idea:** POST `/api/sites/[siteId]/ideas/[ideaId]/generate` → loads idea metadata → calls `writeArticle()` → deducts 1 credit → inserts post (respects `auto_publish` setting)
-- **Ideas:** GET `/api/sites/[siteId]/ideas` → returns active, non-expired ideas for a site. Ideas expire after 14 days.
-- **Cron (monthly):** GET `/api/cron/monthly-credits` with `Authorization: Bearer CRON_SECRET` → grants free credits to all eligible users
+### Generators (one at a time, never parallel)
+| Agent | Use for |
+|-------|---------|
+| `frontend-dev` | Next.js pages, React components, shadcn/ui, Tailwind, blog theme |
+| `api-dev` | API routes, Supabase queries, auth middleware, Stripe, cron jobs |
+| `seo-specialist` | Blog SEO, meta tags, structured data, sitemaps, Open Graph |
+| `perf-optimizer` | Bundle size, caching/ISR, DB query optimization, Core Web Vitals |
 
-### Route Structure
-- Public: `/`, `/sign-in`, `/sign-up` (`/subscribe` redirects to `/dashboard/top-up`)
-- Standalone: `/setup` (post-signup name collection), `/new-site` (site creation wizard) — auth-protected, no dashboard layout
-- Dashboard: `/dashboard/**` (auth-protected, includes `/dashboard/billing`, `/dashboard/top-up`)
-- Blog: `/blog/[subdomain]/**` (public, served via subdomain rewrite)
-- API: `/api/checkout`, `/api/webhooks/stripe`, `/api/agent/run`, `/api/ai/suggest-sources`, `/api/ai/topic-questions`, `/api/ai/scan-company`, `/api/ai/suggest-names`, `/api/ai/generate-post-for-topic`, `/api/billing/auto-renew`, `/api/users/setup`, `/api/posts/**`, `/api/sites/**`, `/api/sites/[siteId]/ideas`, `/api/sites/[siteId]/ideas/[ideaId]/generate`, `/api/sites/[siteId]/suggestions`, `/api/cron/daily-run`, `/api/cron/monthly-credits`
+### Evaluators (run in parallel after generation)
+| Agent | Use for |
+|-------|---------|
+| `qa-tester` | **Always** — build, lint, logic review, test validation |
+| `security-auditor` | API changes, auth, data handling |
+| `content-reviewer` | User-facing text, AI-generated content quality |
+| `code-reviewer` | Code quality, style guide adherence |
+| `code-simplifier` | Simplify overly complex code |
+| `silent-failure-hunter` | Error handling, catch blocks, fallback logic |
+| `type-design-analyzer` | New type definitions |
 
-## Database
+### Research & Planning
+| Agent | Use for |
+|-------|---------|
+| `Explore` | Codebase exploration, finding files, understanding patterns |
+| `Plan` | Architecture decisions, implementation strategy |
+| `general-purpose` | Multi-step research, complex searches |
 
-10 tables, created manually in Supabase SQL Editor. No RLS — ownership enforced in application code.
-
-```sql
-CREATE TABLE users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  clerk_id text UNIQUE NOT NULL,
-  email text NOT NULL,
-  name text,
-  stripe_customer_id text,
-  subscription_status text DEFAULT 'inactive',
-  credit_balance integer DEFAULT 0 NOT NULL,
-  auto_renew boolean DEFAULT false,
-  auto_renew_pack text DEFAULT null,
-  monthly_credits_granted_at timestamptz,
-  created_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE sites (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES users(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  subdomain text UNIQUE NOT NULL,
-  topic text,
-  topic_context jsonb,
-  description text,
-  category text,
-  posting_schedule text DEFAULT 'weekly',
-  posts_per_period integer DEFAULT 1,
-  auto_publish boolean DEFAULT true,
-  schedule_confirmed boolean DEFAULT false,
-  created_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE sources (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id uuid REFERENCES sites(id) ON DELETE CASCADE,
-  type text NOT NULL,
-  url text NOT NULL,
-  label text,
-  created_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE posts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id uuid REFERENCES sites(id) ON DELETE CASCADE,
-  title text NOT NULL,
-  slug text NOT NULL,
-  body text NOT NULL,
-  meta_description text,
-  status text DEFAULT 'draft',
-  generated_at timestamptz DEFAULT now(),
-  published_at timestamptz,
-  generation_run_id uuid REFERENCES generation_runs(id) ON DELETE SET NULL,
-  idea_id uuid REFERENCES post_ideas(id) ON DELETE SET NULL
-);
-
-CREATE TABLE source_snapshots (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  source_id uuid REFERENCES sources(id) ON DELETE CASCADE NOT NULL,
-  content_hash text NOT NULL,
-  content_preview text,
-  scraped_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE source_learnings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
-  source_id uuid REFERENCES sources(id) ON DELETE SET NULL,
-  learnings jsonb NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE generation_runs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
-  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-  sources_scanned integer DEFAULT 0,
-  new_content_found integer DEFAULT 0,
-  learnings_extracted integer DEFAULT 0,
-  ideas_generated integer DEFAULT 0,
-  posts_generated integer DEFAULT 0,
-  credit_deducted boolean DEFAULT false,
-  status text DEFAULT 'running',
-  started_at timestamptz DEFAULT now(),
-  completed_at timestamptz
-);
-
-CREATE TABLE post_ideas (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
-  generation_run_id uuid REFERENCES generation_runs(id) ON DELETE SET NULL,
-  title text NOT NULL,
-  angle text NOT NULL,
-  key_learnings jsonb NOT NULL,
-  status text DEFAULT 'active',
-  expires_at timestamptz NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE credit_transactions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-  amount integer NOT NULL,
-  balance_after integer NOT NULL,
-  type text NOT NULL,
-  reference_id text,
-  site_id uuid REFERENCES sites(id) ON DELETE SET NULL,
-  created_at timestamptz DEFAULT now()
-);
-
-CREATE TABLE source_suggestions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
-  type text NOT NULL,
-  url text NOT NULL,
-  label text NOT NULL,
-  reason text,
-  status text DEFAULT 'active',    -- active | dismissed | accepted
-  search_query text,
-  expires_at timestamptz NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-```
-
-### Supabase RPC Functions (required for atomic credit operations)
-```sql
--- Atomic credit increment
-CREATE OR REPLACE FUNCTION increment_credit_balance(user_id_input uuid, amount integer)
-RETURNS integer AS $$
-  UPDATE users SET credit_balance = credit_balance + amount
-  WHERE id = user_id_input
-  RETURNING credit_balance;
-$$ LANGUAGE sql;
-
--- Atomic conditional credit deduction (prevents overdraw)
-CREATE OR REPLACE FUNCTION deduct_credit_balance(user_id_input uuid, amount integer)
-RETURNS integer AS $$
-  UPDATE users SET credit_balance = credit_balance - amount
-  WHERE id = user_id_input AND credit_balance >= amount
-  RETURNING credit_balance;
-$$ LANGUAGE sql;
-
--- Monthly free credit floor (no stacking: GREATEST(balance, floor))
-CREATE OR REPLACE FUNCTION set_free_credit_floor(user_id_input uuid, floor_amount integer)
-RETURNS integer AS $$
-  UPDATE users
-  SET credit_balance = GREATEST(credit_balance, floor_amount),
-      monthly_credits_granted_at = now()
-  WHERE id = user_id_input
-  RETURNING credit_balance;
-$$ LANGUAGE sql;
-```
+### Workflow Quick Reference
+| Task | Generator → Evaluators |
+|------|----------------------|
+| Frontend UI | `frontend-dev` → `qa-tester` + `security-auditor` + `content-reviewer` |
+| API route | `api-dev` → `qa-tester` + `security-auditor` |
+| Full-stack | `api-dev` first, then `frontend-dev` → `qa-tester` + `security-auditor` + `content-reviewer` |
+| Blog/SEO | `seo-specialist` → `qa-tester` + `content-reviewer` + `seo-specialist` |
+| Bug fix | appropriate generator → `qa-tester` |
+| Refactor | appropriate generator → `qa-tester` + `code-reviewer` |
 
 ## Environment Variables
 

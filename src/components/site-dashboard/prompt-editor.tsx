@@ -30,6 +30,7 @@ export function PromptEditor({
   const skipNextUpdate = useRef(false)
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
@@ -51,7 +52,6 @@ export function PromptEditor({
       const md = getMarkdown(editor)
       onChange(md)
     },
-    immediatelyRender: true,
   })
 
   // Sync external value changes (AI chat updates, version revert) into the editor

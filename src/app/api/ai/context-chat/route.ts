@@ -153,21 +153,29 @@ Respond with a JSON object:
 
 Return ONLY the JSON object, no markdown code blocks.`
 
+    // Use plain text generation (no structuredOutputType) to avoid MindStudio's
+    // server-side JSON validation which fails on large/complex prompts
     const { content } = await agent.generateText({
       message: fullPrompt,
-      structuredOutputType: "json",
-      structuredOutputExample: JSON.stringify({
-        reply: "I've updated your prompt to include audience details...",
-        updatedPrompt: "# Blog Writing Instructions\n\n## Topic\nThis blog covers...",
-        changeSummary: "Added audience section",
-      }),
     })
 
     let response: { reply: string; updatedPrompt?: string; changeSummary?: string }
     try {
+      // Try direct parse first
       response = JSON.parse(content)
     } catch {
-      response = { reply: content }
+      // Extract JSON from markdown code blocks or surrounding text
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+        content.match(/(\{[\s\S]*\})/)
+      if (jsonMatch) {
+        try {
+          response = JSON.parse(jsonMatch[1].trim())
+        } catch {
+          response = { reply: content }
+        }
+      } else {
+        response = { reply: content }
+      }
     }
 
     // Auto-save prompt and version if updated

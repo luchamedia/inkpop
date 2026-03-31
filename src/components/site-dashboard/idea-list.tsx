@@ -78,30 +78,33 @@ export function IdeaList({ siteId, creditBalance }: IdeaListProps) {
 
     setGeneratingId(ideaId)
     try {
-      const res = await fetch(`/api/sites/${siteId}/ideas/${ideaId}/generate`, {
+      const res = await fetch(`/api/sites/${siteId}/queue`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "idea", ideaId }),
       })
 
       if (!res.ok) {
         const data = await res.json()
         toast({
-          title: "Generation failed",
+          title: "Failed to queue",
           description: data.error || "Something went wrong.",
           variant: "destructive",
         })
         return
       }
 
+      const data = await res.json()
       toast({
-        title: "Post generated",
-        description: "A new draft has been created from this idea.",
+        title: "Added to queue",
+        description: `Position #${data.position}. You can navigate away — it will generate in the background.`,
       })
 
       setIdeas((prev) => prev.filter((i) => i.id !== ideaId))
     } catch {
       toast({
         title: "Error",
-        description: "Failed to generate post.",
+        description: "Failed to add to queue.",
         variant: "destructive",
       })
     } finally {
@@ -220,7 +223,7 @@ export function IdeaList({ siteId, creditBalance }: IdeaListProps) {
                   ) : (
                     <Sparkles className="h-3 w-3 mr-1" />
                   )}
-                  {isGenerating ? "Writing..." : "Generate"}
+                  {isGenerating ? "Queuing..." : "Generate"}
                 </Button>
               </div>
             )

@@ -38,5 +38,6 @@ next-env.d.ts
 .claude/*
 !.claude/plans/
 !.claude/rules/
+!.claude/docs/
 .agent/
 .agents/

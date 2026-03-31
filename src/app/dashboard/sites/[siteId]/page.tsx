@@ -33,7 +33,7 @@ export default async function SiteDetailPage({
 
   const postColumns = "id, title, slug, meta_description, status, generated_at, published_at, created_at"
 
-  const [{ data: drafts }, { data: published }] = await Promise.all([
+  const [{ data: drafts }, { data: published }, { count: queueCount }] = await Promise.all([
     supabase
       .from("posts")
       .select(postColumns)
@@ -48,6 +48,11 @@ export default async function SiteDetailPage({
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .range(0, 49),
+    supabase
+      .from("generation_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("site_id", site.id)
+      .in("status", ["queued", "processing"]),
   ])
 
   return (
@@ -73,6 +78,7 @@ export default async function SiteDetailPage({
       published={published || []}
       creditBalance={dbUser.credit_balance ?? 0}
       hasPaymentMethod={!!dbUser.stripe_customer_id}
+      queueCount={queueCount ?? 0}
     />
   )
 }
