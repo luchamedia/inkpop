@@ -22,7 +22,7 @@ inkpop is a multi-tenant SaaS that auto-generates SEO blog posts using MindStudi
 - **Auth:** Clerk v7 (`@clerk/nextjs@7`)
 - **Database:** Supabase (Postgres) via `@supabase/supabase-js`
 - **Billing:** Stripe
-- **AI:** MindStudio SDK (`@mindstudio-ai/agent`) — scrapeUrl + generateText, runs locally (no remote agent)
+- **AI:** MindStudio Agent (`@mindstudio-ai/agent`) — one agent with named workflows called via `runAgent()`. Prompts live in MindStudio UI. SDK still used for `scrapeUrl` in a few routes.
 - **UI:** shadcn/ui + Tailwind CSS (HSL CSS variables, `cn()` from `src/lib/utils.ts`)
 - **Package Manager:** pnpm
 - **Deployment:** Vercel (with Vercel Cron for daily agent runs + monthly credit grants)
@@ -65,8 +65,9 @@ These files contain detailed reference information. Read them on-demand when wor
 |-------|------|-------------|
 | Database schema & RPC functions | `.claude/docs/database.md` | Any DB work, migrations, queries |
 | Key flows (auth, billing, generation) | `.claude/docs/flows.md` | Understanding user journeys, debugging flows |
-| AI content generation pipeline | `.claude/docs/ai-generation.md` | Working on `src/lib/mindstudio.ts` or generation |
-| Generation queue system | `.claude/docs/queue.md` | Queue processing, job lifecycle |
+| AI content generation pipeline | `.claude/docs/ai-generation.md` | Working on `src/lib/ai/*` or generation |
+| **AI pipeline reference (prompts + ops)** | **`.claude/docs/ai-pipeline.md`** | **Editing prompts, understanding full pipeline, debugging generation** |
+| Generation queue system (deprecated) | `.claude/docs/queue.md` | Legacy queue system — replaced by MindStudio agent |
 | Credit system | `.claude/docs/credits.md` | Billing, credits, Stripe integration |
 | Route structure | `.claude/docs/routes.md` | Adding routes, understanding URL structure |
 | Component patterns | `.claude/docs/components.md` | Building UI, understanding component conventions |
@@ -127,9 +128,11 @@ All env vars are in `.env.local` (gitignored). Required:
 | `NEXT_PUBLIC_STRIPE_PRICE_10` | Stripe price ID for 10-credit pack ($5) |
 | `NEXT_PUBLIC_STRIPE_PRICE_50` | Stripe price ID for 50-credit pack ($22.50) |
 | `NEXT_PUBLIC_STRIPE_PRICE_100` | Stripe price ID for 100-credit pack ($40) |
-| `MINDSTUDIO_API_KEY` | MindStudio SDK (scraping + text generation) |
+| `MINDSTUDIO_API_KEY` | MindStudio SDK (`runAgent()` calls + scraping) |
+| `MINDSTUDIO_AGENT_ID` | MindStudio agent app ID (for `callWorkflow()`) |
 | `NEXT_PUBLIC_APP_URL` | Base URL (`http://localhost:3000` or `https://inkpop.net`) |
 | `CRON_SECRET` | Bearer token for cron endpoint |
+| `AGENT_SECRET` | Bearer token for MindStudio agent endpoints (`/api/agent/*`) |
 
 See `.env.example` for the template.
 

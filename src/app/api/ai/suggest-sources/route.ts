@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-helpers"
-import { suggestSources } from "@/lib/mindstudio"
+import { callWorkflow } from "@/lib/ai/agent-client"
 import { createServiceClient } from "@/lib/supabase/server"
-import type { SiteContext } from "@/lib/ai"
 
 export const maxDuration = 90
 
@@ -22,8 +21,9 @@ export async function POST(req: Request) {
       const existingUrls = Array.isArray(body.existingUrls) ? body.existingUrls : []
       const page = typeof body.page === "number" && body.page >= 1 ? body.page : 1
 
-      // Build SiteContext if siteId provided
-      let siteContext: SiteContext | undefined
+      // Build site context if siteId provided
+      let siteDescription = ""
+      let topicContextStr = "[]"
       if (body.siteId) {
         const supabase = createServiceClient()
         const { data: site } = await supabase
@@ -33,19 +33,24 @@ export async function POST(req: Request) {
           .single()
 
         if (site?.topic) {
-          siteContext = {
-            topic: site.topic,
-            description: site.description || undefined,
-            topicContext: Array.isArray(site.topic_context)
-              ? (site.topic_context as Array<{ question: string; answer: string }>)
-              : undefined,
-          }
+          siteDescription = site.description || ""
+          topicContextStr = JSON.stringify(
+            Array.isArray(site.topic_context) ? site.topic_context : []
+          )
         }
       }
 
-      const suggestions = await suggestSources(keywords, existingUrls, page, siteContext)
+      const result = await callWorkflow<{
+        suggestions: Array<{ type: string; url: string; label: string; reason: string }>
+      }>("suggest-sources", {
+        keywords,
+        siteDescription,
+        topicContext: topicContextStr,
+        existingUrls: existingUrls.join(", "),
+        page,
+      })
 
-      return NextResponse.json({ suggestions })
+      return NextResponse.json({ suggestions: result.suggestions })
     } catch (err) {
       console.error("Source suggestion failed:", err)
       return NextResponse.json({ suggestions: [], message: "Could not search at this time" })

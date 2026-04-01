@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
-import { MindStudioAgent } from "@mindstudio-ai/agent"
+import { callWorkflow } from "@/lib/ai/agent-client"
 
 export const maxDuration = 60
-
-const agent = new MindStudioAgent()
 
 export async function POST(req: Request) {
   return withAuth(async (user) => {
@@ -60,31 +58,10 @@ export async function POST(req: Request) {
 
     const siteInfo = parts.join("\n")
 
-    const genPrompt = `You are creating a writing prompt for an AI blog writer. This prompt will be used as instructions every time the AI generates a blog post.
-
-SITE INFORMATION:
-${siteInfo || "Topic: General blog (no specific topic provided)"}
-
-Write a comprehensive but concise writing prompt (under 2000 characters) that covers:
-- What the blog is about and its perspective/angle
-- Target audience and their expertise level (infer if not provided)
-- Preferred tone and voice style
-- Content structure preferences
-- Any rules or constraints
-
-Write it as direct instructions to the AI writer using imperative/second person ("Write in a...", "Target...", "Always...").
-Use markdown formatting with headers and bullet points.
-Be specific and actionable — every sentence should guide the AI's writing.
-Do NOT include SEO rules, word count targets, or formatting rules (H2/H3 usage) — those are handled separately.
-
-Return ONLY the prompt text, no JSON wrapper.`
-
-    const { content } = await agent.generateText({
-      message: genPrompt,
-    })
+    const rawPrompt = await callWorkflow<string>("generate-initial-prompt", { siteInfo })
 
     // Clean up — remove any markdown code block wrappers the AI might add
-    const prompt = content.replace(/^```(?:markdown)?\n?/, "").replace(/\n?```$/, "").trim()
+    const prompt = rawPrompt.replace(/^```(?:markdown)?\n?/, "").replace(/\n?```$/, "").trim()
 
     // Save prompt and create first version
     await supabase

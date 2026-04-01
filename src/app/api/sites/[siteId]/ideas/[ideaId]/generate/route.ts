@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
-import { writeArticle, type Learning, type SiteContext } from "@/lib/mindstudio"
+import { callWorkflow } from "@/lib/ai/agent-client"
 import { getBalance, deductCredits, autoRenewCredits, type PackId } from "@/lib/credits"
+
+interface Learning {
+  topic: string
+  insight: string
+  relevance: "high" | "medium" | "low"
+}
 
 export const maxDuration = 120
 
@@ -95,30 +101,29 @@ export async function POST(
       )
     )
 
-    const siteContext: SiteContext = {
-      topic: site.topic ?? undefined,
-      description: site.description ?? undefined,
-      topicContext: site.topic_context ?? undefined,
-      writingPrompt: site.writing_prompt ?? undefined,
-    }
+    const learningsForPrompt = (relevant.length > 0 ? relevant : allLearnings.slice(0, 5))
+      .map((l) => `- ${l.topic}: ${l.insight}`)
+      .join("\n")
 
-    // Write the article (pass pre-filled metadata from idea)
-    const post = await writeArticle(
+    const post = await callWorkflow<{ title: string; slug: string; body: string; meta_description: string }>(
+      "write-article",
       {
-        title: idea.title,
-        angle: idea.angle,
-        keyLearnings: keyTopics,
-        description: idea.meta_description || "",
-        keywords: (idea.keywords as string[]) || [],
-        slug: idea.slug || "",
-      },
-      relevant.length > 0 ? relevant : allLearnings.slice(0, 5),
-      siteContext
+        ideaTitle: idea.title,
+        ideaAngle: idea.angle,
+        learningsContext: learningsForPrompt,
+        writingPrompt: site.writing_prompt || "",
+        siteTopic: site.topic || "",
+        siteDescription: site.description || "",
+      }
     )
 
     if (!post) {
       return NextResponse.json({ error: "Failed to generate post" }, { status: 500 })
     }
+
+    // Apply idea metadata overrides
+    if (idea.slug) post.slug = idea.slug
+    if (idea.meta_description) post.meta_description = idea.meta_description
 
     // Deduct 1 credit
     const deduction = await deductCredits(user.id, 1, siteId)

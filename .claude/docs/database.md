@@ -1,6 +1,6 @@
 # Database Schema
 
-9 tables, created manually in Supabase SQL Editor. No RLS — ownership enforced in application code.
+10 tables, created manually in Supabase SQL Editor. No RLS — ownership enforced in application code.
 
 ```sql
 CREATE TABLE users (
@@ -103,6 +103,23 @@ CREATE TABLE source_suggestions (
   CONSTRAINT chk_source_suggestions_status CHECK (status IN ('active', 'dismissed', 'accepted'))
 );
 
+-- Tracks MindStudio agent dispatches and deliveries (replaces generation_queue for new flow)
+CREATE TABLE generation_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_id text NOT NULL,
+  site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  status text NOT NULL DEFAULT 'dispatched', -- dispatched | completed | partial | failed
+  expected_posts integer NOT NULL DEFAULT 0,
+  delivered_posts integer DEFAULT 0,
+  errors jsonb DEFAULT '[]',
+  dispatched_at timestamptz DEFAULT now(),
+  delivered_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  CONSTRAINT chk_generation_runs_status CHECK (status IN ('dispatched', 'completed', 'partial', 'failed'))
+);
+
+-- Legacy: being phased out in favor of generation_runs
 CREATE TABLE generation_queue (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   site_id uuid REFERENCES sites(id) ON DELETE CASCADE NOT NULL,
@@ -152,6 +169,12 @@ CREATE INDEX idx_queue_processing ON generation_queue(started_at) WHERE status =
 
 -- Queue: history list on site dashboard (partial — completed + failed)
 CREATE INDEX idx_queue_history ON generation_queue(site_id, completed_at DESC) WHERE status IN ('completed', 'failed');
+
+-- Generation runs: group by run ID
+CREATE INDEX idx_generation_runs_run ON generation_runs(run_id);
+
+-- Generation runs: stale detection (dispatched but never delivered)
+CREATE INDEX idx_generation_runs_stale ON generation_runs(dispatched_at) WHERE status = 'dispatched';
 ```
 
 ## Supabase RPC Functions

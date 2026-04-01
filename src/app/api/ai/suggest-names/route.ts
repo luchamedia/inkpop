@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-helpers"
-import { suggestSiteNames } from "@/lib/mindstudio"
+import { callWorkflow } from "@/lib/ai/agent-client"
 
 export const maxDuration = 30
 
@@ -12,7 +12,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid topic" }, { status: 400 })
     }
 
-    const names = await suggestSiteNames(topic, topicContext || [])
-    return NextResponse.json({ names })
+    const result = await callWorkflow<{ names: string[] }>("suggest-names", {
+      topic,
+      topicContext: JSON.stringify(topicContext || []),
+    })
+    return NextResponse.json({ names: result.names })
   })
 }

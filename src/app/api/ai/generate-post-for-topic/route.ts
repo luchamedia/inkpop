@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
-import { generatePostForTopic } from "@/lib/mindstudio"
+import { callWorkflow } from "@/lib/ai/agent-client"
+import { agent, extractScrapedText, SCRAPE_OPTIONS, MAX_CONTENT_LENGTH } from "@/lib/ai/agent"
 import { getBalance, deductCredits } from "@/lib/credits"
 
 export const maxDuration = 120
@@ -33,10 +34,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
 
-    const post = await generatePostForTopic(
-      topic,
-      site.sources || [],
-      { topic: site.topic, description: site.description, topicContext: site.topic_context, writingPrompt: site.writing_prompt }
+    // Scrape sources app-side
+    const scrapeResults = await Promise.all(
+      (site.sources || []).slice(0, 5).map((s: { url: string }) =>
+        agent.scrapeUrl({ url: s.url, pageOptions: SCRAPE_OPTIONS }).catch(() => null)
+      )
+    )
+    const scrapedContent = scrapeResults
+      .map((r) => extractScrapedText(r))
+      .filter((t) => t.length > 0)
+      .map((t) => t.slice(0, MAX_CONTENT_LENGTH))
+      .join("\n\n---\n\n")
+
+    const post = await callWorkflow<{ title: string; slug: string; body: string; meta_description: string }>(
+      "generate-post-for-topic",
+      {
+        userTopic: topic,
+        scrapedContent,
+        writingPrompt: site.writing_prompt || "",
+        siteContext: JSON.stringify({ topic: site.topic, description: site.description }),
+      }
     )
 
     if (!post) {

@@ -38,17 +38,25 @@ export async function GET(req: NextRequest) {
     .delete({ count: "exact" })
     .lt("expires_at", sevenDaysAgoISO)
 
-  // 4. Delete completed/failed queue jobs older than 30 days
+  // 4. Delete completed/failed queue jobs older than 30 days (legacy)
   const { count: queuePurged } = await supabase
     .from("generation_queue")
     .delete({ count: "exact" })
     .in("status", ["completed", "failed"])
     .lt("completed_at", thirtyDaysAgoISO)
 
+  // 5. Delete completed/failed generation_runs older than 30 days
+  const { count: runsPurged } = await supabase
+    .from("generation_runs")
+    .delete({ count: "exact" })
+    .in("status", ["completed", "partial", "failed"])
+    .lt("delivered_at", thirtyDaysAgoISO)
+
   return NextResponse.json({
     learningsPurged: learningsPurged ?? 0,
     ideasExpired: ideasExpired ?? 0,
     suggestionsPurged: suggestionsPurged ?? 0,
     queuePurged: queuePurged ?? 0,
+    runsPurged: runsPurged ?? 0,
   })
 }

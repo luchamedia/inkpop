@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-helpers"
 import { createServiceClient } from "@/lib/supabase/server"
-import { generatePosts } from "@/lib/mindstudio"
+import { callWorkflow } from "@/lib/ai/agent-client"
+import { agent, extractScrapedText, SCRAPE_OPTIONS, MAX_CONTENT_LENGTH } from "@/lib/ai/agent"
 import { getBalance, deductCredits, autoRenewCredits, type PackId } from "@/lib/credits"
 
 export const maxDuration = 120
@@ -56,18 +57,31 @@ export async function POST(req: Request) {
       )
     }
 
-    const posts = await generatePosts(
-      site.sources.map((s: { type: string; url: string }) => ({
-        type: s.type,
-        url: s.url,
-      })),
-      {
+    // Scrape all sources app-side
+    const scrapeResults = await Promise.all(
+      site.sources.map((s: { url: string }) =>
+        agent.scrapeUrl({ url: s.url, pageOptions: SCRAPE_OPTIONS }).catch(() => null)
+      )
+    )
+    const scrapedContent = scrapeResults
+      .map((r) => extractScrapedText(r))
+      .filter((t) => t.length > 0)
+      .map((t) => t.slice(0, MAX_CONTENT_LENGTH))
+      .join("\n\n---\n\n")
+
+    const result = await callWorkflow<{
+      posts: Array<{ title: string; slug: string; body: string; meta_description: string }>
+    }>("generate-posts", {
+      scrapedContent,
+      writingPrompt: site.writing_prompt || "",
+      siteContext: JSON.stringify({
         topic: site.topic,
         description: site.description,
         topicContext: site.topic_context,
-        writingPrompt: site.writing_prompt,
-      }
-    )
+      }),
+    })
+
+    const posts = result.posts
 
     // Deduct credits based on actual posts generated
     const deduction = await deductCredits(user.id, posts.length, siteId)

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-helpers"
-import { scanCompanyWebsite } from "@/lib/mindstudio"
+import { callWorkflow } from "@/lib/ai/agent-client"
 
 export const maxDuration = 30
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const result = await scanCompanyWebsite(url)
+    const result = await callWorkflow("scan-company", { url })
     return NextResponse.json(result)
   })
 }
